@@ -219,6 +219,89 @@ export async function logRoutineComplete(userId, routineId) {
   if (error && error.code !== '23505') throw error;
 }
 
+// ─── Nutrition Goals ─────────────────────────────────────────────────────────
+
+export async function getNutritionGoals(userId) {
+  const { data, error } = await supabase
+    .from('user_nutrition_goals')
+    .select('*').eq('user_id', userId).single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data ?? { calories: 2000, protein_g: 150, carb_g: 200, fat_g: 60, water_ml: 2500, meal_count: 4 };
+}
+
+export async function upsertNutritionGoals(userId, goals) {
+  const { error } = await supabase.from('user_nutrition_goals')
+    .upsert({ user_id: userId, ...goals, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  if (error) throw error;
+}
+
+// ─── Meal Templates ───────────────────────────────────────────────────────────
+
+export async function getMealTemplates(userId) {
+  const { data, error } = await supabase.from('meal_templates')
+    .select('*').eq('user_id', userId).order('order_index');
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function saveMealTemplate(userId, meal) {
+  if (meal.id) {
+    const { error } = await supabase.from('meal_templates').update(meal).eq('id', meal.id).eq('user_id', userId);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from('meal_templates').insert({ user_id: userId, ...meal });
+    if (error) throw error;
+  }
+}
+
+export async function deleteMealTemplate(mealId) {
+  const { error } = await supabase.from('meal_templates').delete().eq('id', mealId);
+  if (error) throw error;
+}
+
+// ─── Supplement Templates ─────────────────────────────────────────────────────
+
+export async function getSupplements(userId) {
+  const { data, error } = await supabase.from('supplement_templates')
+    .select('*').eq('user_id', userId).order('order_index');
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function saveSupplements(userId, supplements) {
+  await supabase.from('supplement_templates').delete().eq('user_id', userId);
+  if (supplements.length) {
+    const { error } = await supabase.from('supplement_templates').insert(
+      supplements.map((s, i) => ({ user_id: userId, ...s, order_index: i }))
+    );
+    if (error) throw error;
+  }
+}
+
+// ─── Task Templates ───────────────────────────────────────────────────────────
+
+export async function getTaskTemplates(userId) {
+  const { data, error } = await supabase.from('task_templates')
+    .select('*').eq('user_id', userId).eq('is_active', true).order('time');
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function saveTaskTemplate(userId, task) {
+  if (task.id) {
+    const { error } = await supabase.from('task_templates').update(task).eq('id', task.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from('task_templates').insert({ user_id: userId, ...task });
+    if (error) throw error;
+  }
+}
+
+export async function deleteTaskTemplate(taskId) {
+  const { error } = await supabase.from('task_templates').delete().eq('id', taskId);
+  if (error) throw error;
+}
+
 // ─── Skincare routine helpers (legacy) ────────────────────────────────────────
 
 export async function logRoutineCompletion(userId, routineType) {

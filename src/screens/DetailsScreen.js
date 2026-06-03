@@ -2,12 +2,14 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, Modal, TextInput, KeyboardAvoidingView,
-  Platform, Animated, FlatList, Dimensions,
+  Platform, Animated, FlatList, Dimensions, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { C, GRAD } from '../utils/theme';
+import { useLang } from '../context/LanguageContext';
+import { t } from '../utils/i18n';
 import {
   getSleepLogs, getBodyMeasurements, saveBodyMeasurement,
   getDoneToday, getVitaminStock, saveVitaminStock,
@@ -15,6 +17,12 @@ import {
   saveBSRecord, getBSLogs, classifyBS,
   getTodayWaterMl, addWaterMl,
 } from '../utils/storage';
+import {
+  supabase,
+  getNutritionGoals, upsertNutritionGoals,
+  getMealTemplates, saveMealTemplate, deleteMealTemplate,
+  getSupplements, saveSupplements,
+} from '../lib/supabase';
 import { getRecentLog } from '../utils/dailyLog';
 
 const TABS = ['Tansiyon', 'Kan Şekeri', 'Beslenme', 'Su', 'Vitamin', 'Detoks', 'Uyku', 'Vücut'];
@@ -448,129 +456,202 @@ function KanSekeri() {
 }
 
 // ─── Beslenme ─────────────────────────────────────────────────────────────────
+const MEAL_COLORS = [C.emerald, C.blue, C.orchid, C.amber, C.cyan, C.rose];
+
 function Beslenme() {
-  const [openIdx, setOpenIdx] = useState(null);
-  const [done, setDone]       = useState({});
+  const { lang }            = useLang();
+  const [goals,    setGoals]   = useState(null);
+  const [meals,    setMeals]   = useState([]);
+  const [openIdx,  setOpenIdx] = useState(null);
+  const [userId,   setUserId]  = useState(null);
+  const [modal,    setModal]   = useState(false);
+  const [editMeal, setEditMeal]= useState(null);
+  const [form, setForm]        = useState({ title:'', time_hint:'', calories:0, protein_g:0, carb_g:0, fat_g:0, description:'' });
+  const [goalModal, setGoalModal] = useState(false);
+  const [goalForm,  setGoalForm]  = useState({});
 
-  useFocusEffect(useCallback(() => { getDoneToday().then(setDone); }, []));
+  useFocusEffect(useCallback(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data?.user) return;
+      const uid = data.user.id;
+      setUserId(uid);
+      Promise.all([getNutritionGoals(uid), getMealTemplates(uid)]).then(([g, m]) => {
+        setGoals(g); setMeals(m);
+      }).catch(() => {});
+    });
+  }, []));
 
-  const MEAL_MACRO = [
-    { ids:['wi_kahvalti','ct_kahvalti','pz_kahvalti'], t:'Öğün 1 — Kahvaltı',      time:'08:00', color:C.emerald,  p:28,  c:27,  y:26, k:458,  desc:'4 yumurta · Mısır patlaması · Roka & Salatalık · Zeytinyağı', detay:[{isim:'🥚 4 Yumurta',miktar:'4 adet',makro:'P:24g C:2g Y:18g 248kcal',not:'Günün en önemli protein kaynağı.'},{isim:'🍿 Tuzsuz Mısır Patlaması',miktar:'25g',makro:'P:3g C:19g Y:2g 95kcal',not:'Düşük kalori, yüksek hacim.'},{isim:'🥗 Yeşillik',miktar:'İstediğin kadar',makro:'~15kcal',not:'Antioksidan, C vitamini, sindirim lifi.'},{isim:'🫒 Zeytinyağı',miktar:'1 tsp',makro:'Y:5g 45kcal',not:'D3 emilimi için.'}] },
-    { ids:['wi_ogun_2','ct_ogun_2','pz_ogun_2'],       t:'Öğün 2 — Protein Shake', time:'12:30', color:C.blue,   p:25,  c:4,   y:2,  k:132,  desc:'1 ölçek whey · 300ml su', detay:[{isim:'🥛 Whey Protein',miktar:'~30g',makro:'P:25g C:4g Y:2g 130kcal',not:'Hızlı sindirim.'},{isim:'💧 Su',miktar:'300ml',makro:'0kcal',not:'Shake suyu günlük suya sayılır.'}], note:'ℹ️ Bu öğünden sonra diş fırçalamaya gerek yok.' },
-    { ids:['wi_ogun_3','ct_ogun_3','pz_ogun_3'],       t:'Öğün 3 — Tavuk+Makarna', time:'16:00', color:C.emerald,  p:86,  c:130, y:13, k:977,  desc:'300g tavuk · 180g makarna · Sebze · Zeytinyağı', detay:[{isim:'🍗 Tavuk Göğsü',miktar:'300g',makro:'P:75g C:0 Y:6g 360kcal',not:'Izgarada pişir, tuz az.'},{isim:'🍝 Makarna/Pirinç',miktar:'Spor:180g Dinl:120g',makro:'P:22g C:126g Y:2g 620kcal',not:'Al dente pişir, GI düşer.'},{isim:'🥦 Sebze',miktar:'İstediğin kadar',makro:'~50kcal',not:'Buharda pişir.'}] },
-    { ids:['wi_ogun_4','ct_ogun_4','pz_ogun_4'],       t:'Öğün 4 — Antrm. Shake',  time:'19:45', color:C.blue,   p:32,  c:64,  y:5,  k:414,  desc:'Whey · Muz · Yulaf · 300ml su', detay:[{isim:'🥛 Whey',miktar:'~30g',makro:'P:25g C:3g Y:1g 120kcal',not:'30-60dk penceresi.'},{isim:'🍌 Muz',miktar:'1 orta',makro:'P:1g C:27g Y:0g 105kcal',not:'Hızlı karbonhidrat.'},{isim:'🌾 Yulaf',miktar:'Spor:50g Dinl:30g',makro:'P:6g C:33g Y:3g 185kcal',not:'Yavaş sindirim.'}], note:'🚿 Shake sonrası duş al.' },
-  ];
+  const totals = meals.reduce((acc, m) => ({
+    p: acc.p + (m.protein_g ?? 0),
+    c: acc.c + (m.carb_g ?? 0),
+    y: acc.y + (m.fat_g ?? 0),
+    k: acc.k + (m.calories ?? 0),
+  }), { p: 0, c: 0, y: 0, k: 0 });
 
-  const targets = { p:156, c:156, y:47, k:2000 };
-  const totals  = { p:0, c:0, y:0, k:0 };
-  MEAL_MACRO.forEach(m => {
-    if (m.ids.some(id => done[id])) {
-      totals.p += m.p; totals.c += m.c; totals.y += m.y; totals.k += m.k;
-    }
-  });
+  const targets = { p: goals?.protein_g ?? 150, c: goals?.carb_g ?? 200, y: goals?.fat_g ?? 60, k: goals?.calories ?? 2000 };
+
+  async function handleSaveMeal() {
+    if (!form.title.trim() || !userId) return;
+    await saveMealTemplate(userId, editMeal ? { ...editMeal, ...form } : form);
+    setMeals(await getMealTemplates(userId));
+    setModal(false); setEditMeal(null);
+    setForm({ title:'', time_hint:'', calories:0, protein_g:0, carb_g:0, fat_g:0, description:'' });
+  }
+
+  async function handleDeleteMeal(meal) {
+    Alert.alert(t('deleteConfirmTitle', lang), `"${meal.title}" silinsin mi?`, [
+      { text: t('cancel', lang), style: 'cancel' },
+      { text: t('delete', lang), style: 'destructive', onPress: async () => {
+        await deleteMealTemplate(meal.id);
+        setMeals(await getMealTemplates(userId));
+      }},
+    ]);
+  }
+
+  async function handleSaveGoals() {
+    if (!userId) return;
+    await upsertNutritionGoals(userId, goalForm);
+    setGoals({ ...goals, ...goalForm });
+    setGoalModal(false);
+  }
 
   return (
     <ScrollView contentContainerStyle={{ padding:16, paddingBottom:32 }}>
 
-      {/* Canlı makro progress */}
+      {/* Makro özeti */}
       <View style={d.card}>
-        <Text style={d.cardTitle}>📊 Bugünkü Makro Durumu</Text>
-        <Text style={{ color:C.muted, fontSize:11, marginBottom:12 }}>
-          Tamamlanan öğünler otomatik toplanır
-        </Text>
-        {[
-          { label:'Protein', cur:totals.p, max:targets.p, unit:'g', color:C.orchid   },
-          { label:'Karbonhidrat', cur:totals.c, max:targets.c, unit:'g', color:C.blue   },
-          { label:'Yağ',     cur:totals.y, max:targets.y, unit:'g', color:C.purple },
-          { label:'Kalori',  cur:totals.k, max:targets.k, unit:'',  color:C.emerald  },
-        ].map(({ label, cur, max, unit, color }) => {
-          const pct = Math.min((cur / max) * 100, 100);
-          return (
-            <View key={label} style={{ marginBottom:10 }}>
-              <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:4 }}>
-                <Text style={{ color:C.muted, fontSize:12 }}>{label}</Text>
-                <Text style={{ color, fontSize:12, fontWeight:'800' }}>
-                  {cur}{unit} / {max}{unit}
-                </Text>
-              </View>
-              <View style={{ height:8, backgroundColor:C.s3, borderRadius:100, overflow:'hidden' }}>
-                <View style={{ height:'100%', width:`${pct}%`, backgroundColor: color, borderRadius:100 }} />
-              </View>
-            </View>
-          );
-        })}
-
-        {/* Öğün durumu */}
-        <View style={{ flexDirection:'row', gap:6, marginTop:8, flexWrap:'wrap' }}>
-          {MEAL_MACRO.map((m, i) => {
-            const isDone = m.ids.some(id => done[id]);
-            return (
-              <View key={i} style={[d.mealBadge, isDone && { backgroundColor: m.color + '22', borderColor: m.color }]}>
-                <Text style={{ color: isDone ? m.color : C.muted, fontSize:10, fontWeight:'700' }}>
-                  {isDone ? '✓ ' : ''}{m.time}
-                </Text>
-              </View>
-            );
-          })}
+        <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+          <Text style={d.cardTitle}>Makro Durumu</Text>
+          <TouchableOpacity onPress={() => { setGoalForm({ protein_g: targets.p, carb_g: targets.c, fat_g: targets.y, calories: targets.k }); setGoalModal(true); }}
+            style={{ backgroundColor: C.orchid + '20', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: C.orchid + '40' }}>
+            <Text style={{ color: C.orchid, fontSize: 11, fontWeight: '700' }}>Hedefleri Düzenle</Text>
+          </TouchableOpacity>
         </View>
+        {[
+          { label: t('protein', lang),  cur: totals.p, max: targets.p, unit:'g',  color: C.orchid  },
+          { label: t('carbs', lang),    cur: totals.c, max: targets.c, unit:'g',  color: C.blue    },
+          { label: t('fat', lang),      cur: totals.y, max: targets.y, unit:'g',  color: C.purple  },
+          { label: t('calories', lang), cur: totals.k, max: targets.k, unit:'',   color: C.emerald },
+        ].map(({ label, cur, max, unit, color }) => (
+          <View key={label} style={{ marginBottom:10 }}>
+            <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:4 }}>
+              <Text style={{ color:C.muted, fontSize:12 }}>{label}</Text>
+              <Text style={{ color, fontSize:12, fontWeight:'800' }}>{cur}{unit} / {max}{unit}</Text>
+            </View>
+            <View style={{ height:8, backgroundColor:C.s3, borderRadius:100, overflow:'hidden' }}>
+              <View style={{ height:'100%', width:`${Math.min((cur/max)*100,100)}%`, backgroundColor:color, borderRadius:100 }} />
+            </View>
+          </View>
+        ))}
       </View>
 
-      {/* Öğün detayları */}
-      {MEAL_MACRO.map((meal, idx) => {
+      {/* Öğün listesi */}
+      <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+        <Text style={d.sectionTitle}>ÖĞÜNLER</Text>
+        <TouchableOpacity onPress={() => { setEditMeal(null); setModal(true); }}
+          style={{ backgroundColor: C.orchid + '20', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: C.orchid + '40' }}>
+          <Text style={{ color: C.orchid, fontSize: 11, fontWeight: '700' }}>+ Öğün Ekle</Text>
+        </TouchableOpacity>
+      </View>
+
+      {meals.length === 0 ? (
+        <View style={{ alignItems:'center', paddingVertical:32 }}>
+          <Text style={{ color:C.muted, fontSize:13 }}>Henüz öğün yok. + Öğün Ekle ile başla.</Text>
+        </View>
+      ) : meals.map((meal, idx) => {
+        const color  = MEAL_COLORS[idx % MEAL_COLORS.length];
         const isOpen = openIdx === idx;
-        const isDone = meal.ids.some(id => done[id]);
         return (
-          <View key={idx} style={[d.mealCard, isOpen && { borderColor: meal.color }, isDone && { opacity:0.75 }]}>
-            <View style={[d.mealBar, { backgroundColor: meal.color }]} />
+          <View key={meal.id ?? idx} style={[d.mealCard, isOpen && { borderColor: color }]}>
+            <View style={[d.mealBar, { backgroundColor: color }]} />
             <TouchableOpacity onPress={() => setOpenIdx(isOpen ? null : idx)} activeOpacity={0.8}>
-              <View style={{ flexDirection:'row', alignItems:'center', marginBottom: isOpen ? 10 : 0 }}>
+              <View style={{ flexDirection:'row', alignItems:'center' }}>
                 <View style={{ flex:1 }}>
-                  <Text style={[d.mealTitle, { color: meal.color }]}>
-                    {isDone ? '✓ ' : ''}{meal.t}
-                  </Text>
-                  <Text style={d.mealTime}>🕐 {meal.time}</Text>
-                  {!isOpen && <Text style={d.mealDesc}>{meal.desc}</Text>}
+                  <Text style={[d.mealTitle, { color }]}>{meal.title}</Text>
+                  {meal.time_hint && <Text style={d.mealTime}>🕐 {meal.time_hint}</Text>}
+                  {meal.description && !isOpen && <Text style={d.mealDesc}>{meal.description}</Text>}
                 </View>
-                <Text style={{ color:C.muted, fontSize:18, marginLeft:8 }}>{isOpen ? '▲' : '▼'}</Text>
+                <TouchableOpacity onPress={() => handleDeleteMeal(meal)} style={{ paddingHorizontal:8 }}>
+                  <Ionicons name="trash-outline" size={15} color={C.dim} />
+                </TouchableOpacity>
+                <Text style={{ color:C.muted, fontSize:16 }}>{isOpen ? '▲' : '▼'}</Text>
               </View>
-              {!isOpen && (
-                <View style={d.macroRow}>
-                  {[['P',meal.p+'g',C.orchid],['C',meal.c+'g',C.blue],['Y',meal.y+'g',C.purple],['kcal',meal.k,C.emerald]].map(([k,v,c])=>(
-                    <View key={k} style={d.macroBox}><Text style={[d.macroVal,{color:c}]}>{v}</Text><Text style={d.macroKey}>{k}</Text></View>
-                  ))}
-                </View>
-              )}
-            </TouchableOpacity>
-            {isOpen && (
-              <View>
-                <View style={[d.macroRow,{marginBottom:12}]}>
-                  {[['P',meal.p+'g',C.orchid],['C',meal.c+'g',C.blue],['Y',meal.y+'g',C.purple],['kcal',meal.k,C.emerald]].map(([k,v,c])=>(
-                    <View key={k} style={d.macroBox}><Text style={[d.macroVal,{color:c}]}>{v}</Text><Text style={d.macroKey}>{k}</Text></View>
-                  ))}
-                </View>
-                {meal.detay.map((item,j) => (
-                  <View key={j} style={d.besinCard}>
-                    <Text style={d.besinIsim}>{item.isim}</Text>
-                    <View style={{flexDirection:'row',gap:8,marginBottom:4}}><View style={d.besinTag}><Text style={d.besinTagText}>⚖️ {item.miktar}</Text></View></View>
-                    <Text style={d.besinMakro}>{item.makro}</Text>
-                    <Text style={d.besinNot}>{item.not}</Text>
-                  </View>
+              <View style={d.macroRow}>
+                {[['P',meal.protein_g+'g',C.orchid],['C',meal.carb_g+'g',C.blue],['Y',meal.fat_g+'g',C.purple],['kcal',meal.calories,C.emerald]].map(([k,v,c])=>(
+                  <View key={k} style={d.macroBox}><Text style={[d.macroVal,{color:c}]}>{v}</Text><Text style={d.macroKey}>{k}</Text></View>
                 ))}
-                {meal.note && <View style={d.mealNote}><Text style={d.mealNoteText}>{meal.note}</Text></View>}
               </View>
+            </TouchableOpacity>
+            {isOpen && meal.description && (
+              <View style={d.mealNote}><Text style={d.mealNoteText}>{meal.description}</Text></View>
             )}
           </View>
         );
       })}
 
+      {/* Hedef toplam */}
       <View style={d.totalCard}>
         <Text style={d.totalTitle}>GÜNLÜK HEDEF TOPLAM</Text>
         <View style={{flexDirection:'row',gap:8,marginTop:8}}>
-          {[['Protein','156g',C.orchid],['Carb','156g',C.blue],['Yağ','47g',C.purple],['Kalori','~1981',C.emerald]].map(([k,v,c])=>(
+          {[['Protein',targets.p+'g',C.orchid],['Carb',targets.c+'g',C.blue],['Yağ',targets.y+'g',C.purple],['Kalori',''+targets.k,C.emerald]].map(([k,v,c])=>(
             <View key={k} style={[d.macroBox,{flex:1}]}><Text style={[d.macroVal,{color:c,fontSize:15}]}>{v}</Text><Text style={d.macroKey}>{k}</Text></View>
           ))}
         </View>
       </View>
+
+      {/* Öğün ekleme modalı */}
+      <Modal visible={modal} transparent animationType="slide" onRequestClose={() => setModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':'height'} style={{flex:1}}>
+          <TouchableOpacity style={d.overlay} activeOpacity={1} onPress={() => setModal(false)}>
+            <TouchableOpacity activeOpacity={1} style={d.measModal} onPress={()=>{}}>
+              <ScrollView>
+                <Text style={d.measModalTitle}>{editMeal ? 'Öğünü Düzenle' : 'Yeni Öğün'}</Text>
+                {[
+                  ['Öğün adı', 'title', false],
+                  ['Saat (ör. 08:00)', 'time_hint', false],
+                  ['Açıklama', 'description', false],
+                ].map(([lbl, key]) => (
+                  <View key={key} style={d.measInputRow}>
+                    <Text style={d.measInputLabel}>{lbl}</Text>
+                    <TextInput style={[d.measInput, {width:'50%'}]} value={String(form[key])} onChangeText={v => setForm(p=>({...p,[key]:v}))} placeholderTextColor={C.muted} placeholder={lbl} />
+                  </View>
+                ))}
+                {[['Kalori','calories'],['Protein (g)','protein_g'],['Karb (g)','carb_g'],['Yağ (g)','fat_g']].map(([lbl,key])=>(
+                  <View key={key} style={d.measInputRow}>
+                    <Text style={d.measInputLabel}>{lbl}</Text>
+                    <TextInput style={d.measInput} value={String(form[key])} onChangeText={v => setForm(p=>({...p,[key]:parseInt(v)||0}))} keyboardType="number-pad" placeholderTextColor={C.muted} placeholder="0" />
+                  </View>
+                ))}
+                <View style={{flexDirection:'row',gap:10,marginTop:16}}>
+                  <TouchableOpacity style={d.cancelBtn} onPress={() => setModal(false)}><Text style={{color:C.muted,fontWeight:'700'}}>İptal</Text></TouchableOpacity>
+                  <TouchableOpacity style={d.saveBtn} onPress={handleSaveMeal}><Text style={{color:C.bg,fontWeight:'900'}}>Kaydet ✓</Text></TouchableOpacity>
+                </View>
+              </ScrollView>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Hedef düzenleme modalı */}
+      <Modal visible={goalModal} transparent animationType="slide" onRequestClose={() => setGoalModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':'height'} style={{flex:1}}>
+          <TouchableOpacity style={d.overlay} activeOpacity={1} onPress={() => setGoalModal(false)}>
+            <TouchableOpacity activeOpacity={1} style={d.measModal} onPress={()=>{}}>
+              <Text style={d.measModalTitle}>Günlük Hedefler</Text>
+              {[['Kalori','calories'],['Protein (g)','protein_g'],['Karbonhidrat (g)','carb_g'],['Yağ (g)','fat_g']].map(([lbl,key])=>(
+                <View key={key} style={d.measInputRow}>
+                  <Text style={d.measInputLabel}>{lbl}</Text>
+                  <TextInput style={d.measInput} value={String(goalForm[key]??0)} onChangeText={v=>setGoalForm(p=>({...p,[key]:parseInt(v)||0}))} keyboardType="number-pad" placeholderTextColor={C.muted} placeholder="0" />
+                </View>
+              ))}
+              <View style={{flexDirection:'row',gap:10,marginTop:16}}>
+                <TouchableOpacity style={d.cancelBtn} onPress={()=>setGoalModal(false)}><Text style={{color:C.muted,fontWeight:'700'}}>İptal</Text></TouchableOpacity>
+                <TouchableOpacity style={d.saveBtn} onPress={handleSaveGoals}><Text style={{color:C.bg,fontWeight:'900'}}>Kaydet ✓</Text></TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScrollView>
   );
 }
@@ -719,148 +800,171 @@ function Su() {
 }
 
 // ─── Vitamin ──────────────────────────────────────────────────────────────────
+const SUP_COLORS = [C.orchid, C.blue, C.orange, C.emerald, C.rose, C.purple, C.cyan, C.amber, C.teal];
+
 function Vitamin() {
-  const [stock,      setStock]      = useState({});
-  const [editModal,  setEditModal]  = useState(null); // {key, label, current}
-  const [editVal,    setEditVal]    = useState('');
+  const { lang }                = useLang();
+  const [sups,      setSups]    = useState([]);
+  const [stock,     setStock]   = useState({});
+  const [userId,    setUserId]  = useState(null);
+  const [editModal, setEdit]    = useState(null);
+  const [editVal,   setEditVal] = useState('');
+  const [addModal,  setAddModal]= useState(false);
+  const [newSup,    setNewSup]  = useState({ name:'', daily_dose:1, unit:'kapsul' });
 
-  useFocusEffect(useCallback(() => { getVitaminStock().then(setStock); }, []));
+  useFocusEffect(useCallback(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data?.user) return;
+      setUserId(data.user.id);
+      Promise.all([getSupplements(data.user.id), getVitaminStock()]).then(([s, st]) => {
+        setSups(s); setStock(st);
+      }).catch(() => {});
+    });
+  }, []));
 
-  const SUPPLEMENTS = [
-    { key:'d3k2',      label:'D3 + K2',          gunlukDoz:1,  birimBaslik:'kapsül', renk:C.orchid   },
-    { key:'omega3',    label:'Omega-3',            gunlukDoz:2,  birimBaslik:'kapsül', renk:C.blue   },
-    { key:'vitC',      label:'C Vitamini',         gunlukDoz:1,  birimBaslik:'tablet', renk:C.orange },
-    { key:'milkTh',    label:'Milk Thistle',        gunlukDoz:1,  birimBaslik:'kapsül', renk:C.emerald  },
-    { key:'kreatin',   label:'Kreatin',             gunlukDoz:5,  birimBaslik:'g',      renk:C.rose    },
-    { key:'magnesyum', label:'Magnezyum Glisinát', gunlukDoz:1,  birimBaslik:'kapsül', renk:C.purple },
-    { key:'psyllium',  label:'Psyllium Husk',      gunlukDoz:5,  birimBaslik:'g',      renk:C.emerald  },
-    { key:'preWo',     label:'Pre-Workout',         gunlukDoz:1,  birimBaslik:'porsiyon', renk:C.orange },
-    { key:'elektrolit',label:'Elektrolit',          gunlukDoz:1,  birimBaslik:'porsiyon', renk:C.blue },
-  ];
+  async function handleAddSup() {
+    if (!newSup.name.trim() || !userId) return;
+    const updated = [...sups, { ...newSup, color: SUP_COLORS[sups.length % SUP_COLORS.length] }];
+    await saveSupplements(userId, updated);
+    setSups(await getSupplements(userId));
+    setAddModal(false);
+    setNewSup({ name:'', daily_dose:1, unit:'kapsul' });
+  }
 
-  const EMILIM_TIPS = [
-    { emoji:'☀️', baslik:'D3 + K2 → Yağlı yemekle al', aciklama:'Yağda çözünen vitamin. Kahvaltı sonrası yumurta yağıyla emilim %30+ artar.', renk:C.orchid },
-    { emoji:'🍊', baslik:'C Vitamini → Demiri artırır',   aciklama:'C vitamini bitkisel demirin emilimini 3x artırır. Demir takviyeleri alıyorsan aynı anda iç.', renk:C.orange },
-    { emoji:'🌙', baslik:'Magnezyum → Gece yatmadan',     aciklama:'Magnezyum glisinát gevşetici. Uyku kalitesini yükseltmek için yatmadan 30-60dk önce al.', renk:C.purple },
-    { emoji:'⏰', baslik:'Kreatin → Her gün aynı saatte', aciklama:'Timing önemsiz, tutarlılık önemli. Spor sonrası almak hafif avantaj sağlar.', renk:C.rose },
-    { emoji:'🚫', baslik:'Çinko → Kalsiyumdan uzak tut',  aciklama:'Kalsiyum, çinko emilimini engeller. Pre-workout veya öğün araları tercih et.', renk:C.muted },
-  ];
+  async function handleDeleteSup(idx) {
+    const updated = sups.filter((_, i) => i !== idx);
+    await saveSupplements(userId, updated);
+    setSups(await getSupplements(userId));
+  }
 
-  const openEdit = (sup) => {
-    setEditModal(sup);
-    setEditVal(stock[sup.key] !== undefined ? String(stock[sup.key]) : '');
-  };
-
-  const saveStock = async () => {
+  async function saveStock() {
     const val = parseFloat(editVal);
     if (!isNaN(val) && val >= 0) {
-      const updated = { ...stock, [editModal.key]: val };
+      const key = editModal.id ?? editModal.name;
+      const updated = { ...stock, [key]: val };
       await saveVitaminStock(updated);
       setStock(updated);
     }
-    setEditModal(null);
-  };
+    setEdit(null);
+  }
 
   return (
     <ScrollView contentContainerStyle={{ padding:16, paddingBottom:32 }}>
 
-      {/* Emilim ipuçları */}
-      <Text style={[d.sectionTitle, { marginBottom:10 }]}>💡 EMİLİM İPUÇLARI</Text>
-      {EMILIM_TIPS.map((tip, i) => (
-        <View key={i} style={[d.tipCard, { borderLeftColor: tip.renk }]}>
-          <Text style={{ fontSize:18, marginRight:10 }}>{tip.emoji}</Text>
-          <View style={{ flex:1 }}>
-            <Text style={{ color:C.text, fontSize:12, fontWeight:'800', marginBottom:2 }}>{tip.baslik}</Text>
-            <Text style={{ color:C.muted, fontSize:11, lineHeight:16 }}>{tip.aciklama}</Text>
+      {/* Tips */}
+      <View style={[d.card, { marginBottom:16 }]}>
+        <Text style={d.cardTitle}>Emilim Ipuclari</Text>
+        {[
+          { emoji:'☀️', txt:'Yagda cozunen vitaminler (D3, K2) yagli yemekle al.', renk:C.orchid },
+          { emoji:'🌙', txt:'Magnezyum glisinát — yatmadan 30-60dk once en etkili.', renk:C.purple },
+          { emoji:'🍊', txt:'C vitamini, bitkisel demir emilimini 3x arttirir.', renk:C.orange },
+          { emoji:'⏰', txt:'Kreatin — zamanlama degil tutarlilik onemli.', renk:C.rose },
+        ].map((tip, i) => (
+          <View key={i} style={[d.tipCard, { borderLeftColor: tip.renk }]}>
+            <Text style={{ fontSize:16, marginRight:8 }}>{tip.emoji}</Text>
+            <Text style={{ color:C.muted, fontSize:12, flex:1, lineHeight:16 }}>{tip.txt}</Text>
           </View>
-        </View>
-      ))}
+        ))}
+      </View>
 
-      {/* Stok takibi */}
-      <Text style={[d.sectionTitle, { marginTop:16, marginBottom:10 }]}>📦 STOK TAKİBİ — Tıkla, Güncelle</Text>
-      {SUPPLEMENTS.map((sup) => {
-        const mevcut   = stock[sup.key];
-        const gunKaldi = mevcut !== undefined ? Math.floor(mevcut / sup.gunlukDoz) : null;
-        const ayKaldi  = gunKaldi !== null ? Math.floor(gunKaldi / 30) : null;
-        const dusuk    = gunKaldi !== null && gunKaldi < 10;
+      {/* Stok */}
+      <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+        <Text style={d.sectionTitle}>STOK TAKIBI</Text>
+        <TouchableOpacity onPress={() => setAddModal(true)}
+          style={{ backgroundColor:C.orchid+'20', borderRadius:10, paddingHorizontal:10, paddingVertical:4, borderWidth:1, borderColor:C.orchid+'40' }}>
+          <Text style={{ color:C.orchid, fontSize:11, fontWeight:'700' }}>+ Takviye Ekle</Text>
+        </TouchableOpacity>
+      </View>
+
+      {sups.length === 0 ? (
+        <Text style={{ color:C.muted, textAlign:'center', paddingVertical:24 }}>Takviye eklemediniz.</Text>
+      ) : sups.map((sup, i) => {
+        const key = sup.id ?? sup.name;
+        const mevcut = stock[key];
+        const gunKaldi = mevcut !== undefined ? Math.floor(mevcut / (sup.daily_dose || 1)) : null;
+        const dusuk = gunKaldi !== null && gunKaldi < 10;
+        const color = sup.color ?? SUP_COLORS[i % SUP_COLORS.length];
         return (
-          <TouchableOpacity key={sup.key} style={[d.vitStockRow, dusuk && { borderColor: C.rose + '88' }]}
-            onPress={() => openEdit(sup)} activeOpacity={0.75}>
-            <View style={{ flex:1 }}>
-              <Text style={{ color:C.text, fontSize:13, fontWeight:'700' }}>{sup.label}</Text>
-              <Text style={{ color:C.muted, fontSize:11 }}>
-                {sup.gunlukDoz} {sup.birimBaslik}/gün
-              </Text>
+          <TouchableOpacity key={key} style={[d.vitStockRow, dusuk && { borderColor:C.rose+'88' }]}
+            onPress={() => { setEdit(sup); setEditVal(mevcut !== undefined ? String(mevcut) : ''); }} activeOpacity={0.75}>
+            <View style={{ width:8, height:8, borderRadius:4, backgroundColor:color, marginTop:2, flexShrink:0 }} />
+            <View style={{ flex:1, marginLeft:10 }}>
+              <Text style={{ color:C.text, fontSize:13, fontWeight:'700' }}>{sup.name}</Text>
+              <Text style={{ color:C.muted, fontSize:11 }}>{sup.daily_dose} {sup.unit}/gun</Text>
             </View>
             <View style={{ alignItems:'flex-end' }}>
               {gunKaldi !== null ? (
                 <>
-                  <Text style={{ color: dusuk ? C.rose : sup.renk, fontSize:14, fontWeight:'900' }}>
-                    {mevcut} {sup.birimBaslik}
-                  </Text>
-                  <Text style={{ color: dusuk ? C.rose : C.muted, fontSize:10 }}>
-                    {dusuk ? '⚠️ ' : ''}{gunKaldi} gün{ayKaldi > 0 ? ` (~${ayKaldi} ay)` : ''} kaldı
-                  </Text>
+                  <Text style={{ color:dusuk ? C.rose : color, fontSize:14, fontWeight:'900' }}>{mevcut} {sup.unit}</Text>
+                  <Text style={{ color:dusuk ? C.rose : C.muted, fontSize:10 }}>{dusuk ? '⚠️ ' : ''}{gunKaldi} gun kaldi</Text>
                 </>
-              ) : (
-                <Text style={{ color:C.muted, fontSize:12 }}>Tap to set</Text>
-              )}
+              ) : <Text style={{ color:C.muted, fontSize:12 }}>Stok gir</Text>}
             </View>
+            <TouchableOpacity onPress={() => handleDeleteSup(i)} style={{ paddingLeft:10 }}>
+              <Ionicons name="trash-outline" size={14} color={C.dim} />
+            </TouchableOpacity>
           </TouchableOpacity>
         );
       })}
 
-      {/* Aylık maliyet hesabı */}
-      <View style={[d.card, { marginTop:16 }]}>
-        <Text style={d.cardTitle}>🗓️ Aylık Tüketim Tahmini</Text>
-        <View style={{ marginTop:8, gap:4 }}>
-          {SUPPLEMENTS.filter(s => ['d3k2','omega3','vitC','milkTh','magnesyum'].includes(s.key)).map(s => (
-            <View key={s.key} style={{ flexDirection:'row', justifyContent:'space-between' }}>
-              <Text style={{ color:C.muted, fontSize:12 }}>{s.label}</Text>
-              <Text style={{ color:s.renk, fontSize:12, fontWeight:'700' }}>
-                ~{s.gunlukDoz * 30} {s.birimBaslik}/ay
-              </Text>
-            </View>
-          ))}
+      {sups.length > 0 && (
+        <View style={[d.card, { marginTop:16 }]}>
+          <Text style={d.cardTitle}>Aylik Tuketim Tahmini</Text>
+          <View style={{ marginTop:8, gap:4 }}>
+            {sups.map((s, i) => (
+              <View key={i} style={{ flexDirection:'row', justifyContent:'space-between' }}>
+                <Text style={{ color:C.muted, fontSize:12 }}>{s.name}</Text>
+                <Text style={{ color:s.color ?? SUP_COLORS[i%SUP_COLORS.length], fontSize:12, fontWeight:'700' }}>~{(s.daily_dose||1)*30} {s.unit}/ay</Text>
+              </View>
+            ))}
+          </View>
         </View>
-      </View>
+      )}
 
-      {/* Stok düzenleme modalı */}
       {editModal && (
-        <Modal visible transparent animationType="fade" onRequestClose={() => setEditModal(null)}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex:1 }}>
-            <TouchableOpacity style={d.overlay} activeOpacity={1} onPress={() => setEditModal(null)}>
-              <TouchableOpacity activeOpacity={1} style={d.smallModal} onPress={() => {}}>
-                <Text style={d.measModalTitle}>{editModal.label}</Text>
-                <Text style={{ color:C.muted, fontSize:12, marginBottom:12, textAlign:'center' }}>
-                  Mevcut stok miktarını gir ({editModal.birimBaslik})
-                </Text>
-                <TextInput
-                  style={[d.measInput, { width:'100%', marginBottom:16, fontSize:20, height:52 }]}
-                  value={editVal}
-                  onChangeText={setEditVal}
-                  keyboardType="decimal-pad"
-                  placeholder="0"
-                  placeholderTextColor={C.muted}
-                  autoFocus
-                />
+        <Modal visible transparent animationType="fade" onRequestClose={() => setEdit(null)}>
+          <KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':'height'} style={{ flex:1 }}>
+            <TouchableOpacity style={d.overlay} activeOpacity={1} onPress={() => setEdit(null)}>
+              <TouchableOpacity activeOpacity={1} style={d.smallModal} onPress={()=>{}}>
+                <Text style={d.measModalTitle}>{editModal.name}</Text>
+                <Text style={{ color:C.muted, fontSize:12, marginBottom:12, textAlign:'center' }}>Stok ({editModal.unit})</Text>
+                <TextInput style={[d.measInput,{width:'100%',marginBottom:16,fontSize:20,height:52}]} value={editVal} onChangeText={setEditVal} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={C.muted} autoFocus />
                 <View style={{ flexDirection:'row', gap:10 }}>
-                  <TouchableOpacity style={d.cancelBtn} onPress={() => setEditModal(null)}>
-                    <Text style={{ color:C.muted, fontWeight:'700' }}>İptal</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={d.saveBtn} onPress={saveStock}>
-                    <Text style={{ color:C.bg, fontWeight:'900' }}>Kaydet ✓</Text>
-                  </TouchableOpacity>
+                  <TouchableOpacity style={d.cancelBtn} onPress={() => setEdit(null)}><Text style={{ color:C.muted, fontWeight:'700' }}>Iptal</Text></TouchableOpacity>
+                  <TouchableOpacity style={d.saveBtn} onPress={saveStock}><Text style={{ color:C.bg, fontWeight:'900' }}>Kaydet</Text></TouchableOpacity>
                 </View>
               </TouchableOpacity>
             </TouchableOpacity>
           </KeyboardAvoidingView>
         </Modal>
       )}
+
+      <Modal visible={addModal} transparent animationType="slide" onRequestClose={() => setAddModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':'height'} style={{ flex:1 }}>
+          <TouchableOpacity style={d.overlay} activeOpacity={1} onPress={() => setAddModal(false)}>
+            <TouchableOpacity activeOpacity={1} style={d.smallModal} onPress={()=>{}}>
+              <Text style={d.measModalTitle}>Yeni Takviye</Text>
+              {[['Ad','name'],['Birim (kapsul/g/ml)','unit']].map(([lbl,key])=>(
+                <View key={key} style={d.measInputRow}>
+                  <Text style={d.measInputLabel}>{lbl}</Text>
+                  <TextInput style={[d.measInput,{width:'55%'}]} value={newSup[key]} onChangeText={v=>setNewSup(p=>({...p,[key]:v}))} placeholderTextColor={C.muted} placeholder={lbl} />
+                </View>
+              ))}
+              <View style={d.measInputRow}>
+                <Text style={d.measInputLabel}>Gunluk Doz</Text>
+                <TextInput style={d.measInput} value={String(newSup.daily_dose)} onChangeText={v=>setNewSup(p=>({...p,daily_dose:parseFloat(v)||1}))} keyboardType="decimal-pad" placeholderTextColor={C.muted} placeholder="1" />
+              </View>
+              <View style={{ flexDirection:'row', gap:10, marginTop:16 }}>
+                <TouchableOpacity style={d.cancelBtn} onPress={() => setAddModal(false)}><Text style={{ color:C.muted, fontWeight:'700' }}>Iptal</Text></TouchableOpacity>
+                <TouchableOpacity style={d.saveBtn} onPress={handleAddSup}><Text style={{ color:C.bg, fontWeight:'900' }}>Ekle</Text></TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScrollView>
   );
 }
-
 // ─── Detoks ───────────────────────────────────────────────────────────────────
 function Detoks() {
   const [timerActive,  setTimerActive]  = useState(false);
