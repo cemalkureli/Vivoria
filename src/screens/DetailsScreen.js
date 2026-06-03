@@ -31,9 +31,9 @@ function Beslenme() {
   useFocusEffect(useCallback(() => { getDoneToday().then(setDone); }, []));
 
   const MEAL_MACRO = [
-    { ids:['wi_kahvalti','ct_kahvalti','pz_kahvalti'], t:'Öğün 1 — Kahvaltı',      time:'08:00', color:C.green,  p:28,  c:27,  y:26, k:458,  desc:'4 yumurta · Mısır patlaması · Roka & Salatalık · Zeytinyağı', detay:[{isim:'🥚 4 Yumurta',miktar:'4 adet',makro:'P:24g C:2g Y:18g 248kcal',not:'Günün en önemli protein kaynağı.'},{isim:'🍿 Tuzsuz Mısır Patlaması',miktar:'25g',makro:'P:3g C:19g Y:2g 95kcal',not:'Düşük kalori, yüksek hacim.'},{isim:'🥗 Yeşillik',miktar:'İstediğin kadar',makro:'~15kcal',not:'Antioksidan, C vitamini, sindirim lifi.'},{isim:'🫒 Zeytinyağı',miktar:'1 tsp',makro:'Y:5g 45kcal',not:'D3 emilimi için.'}] },
+    { ids:['wi_kahvalti','ct_kahvalti','pz_kahvalti'], t:'Öğün 1 — Kahvaltı',      time:'08:00', color:C.emerald,  p:28,  c:27,  y:26, k:458,  desc:'4 yumurta · Mısır patlaması · Roka & Salatalık · Zeytinyağı', detay:[{isim:'🥚 4 Yumurta',miktar:'4 adet',makro:'P:24g C:2g Y:18g 248kcal',not:'Günün en önemli protein kaynağı.'},{isim:'🍿 Tuzsuz Mısır Patlaması',miktar:'25g',makro:'P:3g C:19g Y:2g 95kcal',not:'Düşük kalori, yüksek hacim.'},{isim:'🥗 Yeşillik',miktar:'İstediğin kadar',makro:'~15kcal',not:'Antioksidan, C vitamini, sindirim lifi.'},{isim:'🫒 Zeytinyağı',miktar:'1 tsp',makro:'Y:5g 45kcal',not:'D3 emilimi için.'}] },
     { ids:['wi_ogun_2','ct_ogun_2','pz_ogun_2'],       t:'Öğün 2 — Protein Shake', time:'12:30', color:C.blue,   p:25,  c:4,   y:2,  k:132,  desc:'1 ölçek whey · 300ml su', detay:[{isim:'🥛 Whey Protein',miktar:'~30g',makro:'P:25g C:4g Y:2g 130kcal',not:'Hızlı sindirim.'},{isim:'💧 Su',miktar:'300ml',makro:'0kcal',not:'Shake suyu günlük suya sayılır.'}], note:'ℹ️ Bu öğünden sonra diş fırçalamaya gerek yok.' },
-    { ids:['wi_ogun_3','ct_ogun_3','pz_ogun_3'],       t:'Öğün 3 — Tavuk+Makarna', time:'16:00', color:C.green,  p:86,  c:130, y:13, k:977,  desc:'300g tavuk · 180g makarna · Sebze · Zeytinyağı', detay:[{isim:'🍗 Tavuk Göğsü',miktar:'300g',makro:'P:75g C:0 Y:6g 360kcal',not:'Izgarada pişir, tuz az.'},{isim:'🍝 Makarna/Pirinç',miktar:'Spor:180g Dinl:120g',makro:'P:22g C:126g Y:2g 620kcal',not:'Al dente pişir, GI düşer.'},{isim:'🥦 Sebze',miktar:'İstediğin kadar',makro:'~50kcal',not:'Buharda pişir.'}] },
+    { ids:['wi_ogun_3','ct_ogun_3','pz_ogun_3'],       t:'Öğün 3 — Tavuk+Makarna', time:'16:00', color:C.emerald,  p:86,  c:130, y:13, k:977,  desc:'300g tavuk · 180g makarna · Sebze · Zeytinyağı', detay:[{isim:'🍗 Tavuk Göğsü',miktar:'300g',makro:'P:75g C:0 Y:6g 360kcal',not:'Izgarada pişir, tuz az.'},{isim:'🍝 Makarna/Pirinç',miktar:'Spor:180g Dinl:120g',makro:'P:22g C:126g Y:2g 620kcal',not:'Al dente pişir, GI düşer.'},{isim:'🥦 Sebze',miktar:'İstediğin kadar',makro:'~50kcal',not:'Buharda pişir.'}] },
     { ids:['wi_ogun_4','ct_ogun_4','pz_ogun_4'],       t:'Öğün 4 — Antrm. Shake',  time:'19:45', color:C.blue,   p:32,  c:64,  y:5,  k:414,  desc:'Whey · Muz · Yulaf · 300ml su', detay:[{isim:'🥛 Whey',miktar:'~30g',makro:'P:25g C:3g Y:1g 120kcal',not:'30-60dk penceresi.'},{isim:'🍌 Muz',miktar:'1 orta',makro:'P:1g C:27g Y:0g 105kcal',not:'Hızlı karbonhidrat.'},{isim:'🌾 Yulaf',miktar:'Spor:50g Dinl:30g',makro:'P:6g C:33g Y:3g 185kcal',not:'Yavaş sindirim.'}], note:'🚿 Shake sonrası duş al.' },
   ];
 
@@ -55,10 +55,10 @@ function Beslenme() {
           Tamamlanan öğünler otomatik toplanır
         </Text>
         {[
-          { label:'Protein', cur:totals.p, max:targets.p, unit:'g', color:C.lime   },
+          { label:'Protein', cur:totals.p, max:targets.p, unit:'g', color:C.orchid   },
           { label:'Karbonhidrat', cur:totals.c, max:targets.c, unit:'g', color:C.blue   },
           { label:'Yağ',     cur:totals.y, max:targets.y, unit:'g', color:C.purple },
-          { label:'Kalori',  cur:totals.k, max:targets.k, unit:'',  color:C.green  },
+          { label:'Kalori',  cur:totals.k, max:targets.k, unit:'',  color:C.emerald  },
         ].map(({ label, cur, max, unit, color }) => {
           const pct = Math.min((cur / max) * 100, 100);
           return (
@@ -111,7 +111,7 @@ function Beslenme() {
               </View>
               {!isOpen && (
                 <View style={d.macroRow}>
-                  {[['P',meal.p+'g',C.lime],['C',meal.c+'g',C.blue],['Y',meal.y+'g',C.purple],['kcal',meal.k,C.green]].map(([k,v,c])=>(
+                  {[['P',meal.p+'g',C.orchid],['C',meal.c+'g',C.blue],['Y',meal.y+'g',C.purple],['kcal',meal.k,C.emerald]].map(([k,v,c])=>(
                     <View key={k} style={d.macroBox}><Text style={[d.macroVal,{color:c}]}>{v}</Text><Text style={d.macroKey}>{k}</Text></View>
                   ))}
                 </View>
@@ -120,7 +120,7 @@ function Beslenme() {
             {isOpen && (
               <View>
                 <View style={[d.macroRow,{marginBottom:12}]}>
-                  {[['P',meal.p+'g',C.lime],['C',meal.c+'g',C.blue],['Y',meal.y+'g',C.purple],['kcal',meal.k,C.green]].map(([k,v,c])=>(
+                  {[['P',meal.p+'g',C.orchid],['C',meal.c+'g',C.blue],['Y',meal.y+'g',C.purple],['kcal',meal.k,C.emerald]].map(([k,v,c])=>(
                     <View key={k} style={d.macroBox}><Text style={[d.macroVal,{color:c}]}>{v}</Text><Text style={d.macroKey}>{k}</Text></View>
                   ))}
                 </View>
@@ -142,7 +142,7 @@ function Beslenme() {
       <View style={d.totalCard}>
         <Text style={d.totalTitle}>GÜNLÜK HEDEF TOPLAM</Text>
         <View style={{flexDirection:'row',gap:8,marginTop:8}}>
-          {[['Protein','156g',C.lime],['Carb','156g',C.blue],['Yağ','47g',C.purple],['Kalori','~1981',C.green]].map(([k,v,c])=>(
+          {[['Protein','156g',C.orchid],['Carb','156g',C.blue],['Yağ','47g',C.purple],['Kalori','~1981',C.emerald]].map(([k,v,c])=>(
             <View key={k} style={[d.macroBox,{flex:1}]}><Text style={[d.macroVal,{color:c,fontSize:15}]}>{v}</Text><Text style={d.macroKey}>{k}</Text></View>
           ))}
         </View>
@@ -165,11 +165,11 @@ function Su() {
 
   // Su görevleri ve mL değerleri
   const WATER_TASKS = [
-    { ids:['wi_detoks','ct_detoks','pz_detoks'],           label:'Detoks iksiri',     ml:200,  color:C.green  },
+    { ids:['wi_detoks','ct_detoks','pz_detoks'],           label:'Detoks iksiri',     ml:200,  color:C.emerald  },
     { ids:['wi_ogun_2','ct_ogun_2','pz_ogun_2'],           label:'Öğün 2 shake',      ml:300,  color:C.blue   },
     { ids:['wi_su_1','ct_su_1','pz_su_1'],                 label:'Su alarm — 09:30',  ml:250,  color:C.blue   },
     { ids:['wi_su_2','ct_su_2','pz_su_2'],                 label:'Su alarm — 11:00',  ml:250,  color:C.blue   },
-    { ids:['wi_preworkout','ct_preworkout'],                label:'Pre-workout suyu',  ml:500,  color:C.red    },
+    { ids:['wi_preworkout','ct_preworkout'],                label:'Pre-workout suyu',  ml:500,  color:C.rose    },
     { ids:['wi_su_3','ct_su_3','pz_su_3'],                 label:'Su alarm — 14:30',  ml:250,  color:C.blue   },
     { ids:['wi_ogun_4','ct_ogun_4','pz_ogun_4'],           label:'Öğün 4 shake',      ml:300,  color:C.blue   },
     { ids:['wi_su_4','ct_su_4','pz_su_4'],                 label:'Su alarm — 21:00',  ml:250,  color:C.blue   },
@@ -202,10 +202,10 @@ function Su() {
 
   function heatColor(score) {
     if (score < 0)  return C.s3;
-    if (score === 0) return C.red + '88';
+    if (score === 0) return C.rose + '88';
     if (score <= 2)  return C.orange + 'aa';
-    if (score <= 4)  return C.lime + 'aa';
-    return C.green;
+    if (score <= 4)  return C.orchid + 'aa';
+    return C.emerald;
   }
 
   const fillWidth = fillAnim.interpolate({ inputRange:[0,1], outputRange:['0%','100%'] });
@@ -303,22 +303,22 @@ function Vitamin() {
   useFocusEffect(useCallback(() => { getVitaminStock().then(setStock); }, []));
 
   const SUPPLEMENTS = [
-    { key:'d3k2',      label:'D3 + K2',          gunlukDoz:1,  birimBaslik:'kapsül', renk:C.lime   },
+    { key:'d3k2',      label:'D3 + K2',          gunlukDoz:1,  birimBaslik:'kapsül', renk:C.orchid   },
     { key:'omega3',    label:'Omega-3',            gunlukDoz:2,  birimBaslik:'kapsül', renk:C.blue   },
     { key:'vitC',      label:'C Vitamini',         gunlukDoz:1,  birimBaslik:'tablet', renk:C.orange },
-    { key:'milkTh',    label:'Milk Thistle',        gunlukDoz:1,  birimBaslik:'kapsül', renk:C.green  },
-    { key:'kreatin',   label:'Kreatin',             gunlukDoz:5,  birimBaslik:'g',      renk:C.red    },
+    { key:'milkTh',    label:'Milk Thistle',        gunlukDoz:1,  birimBaslik:'kapsül', renk:C.emerald  },
+    { key:'kreatin',   label:'Kreatin',             gunlukDoz:5,  birimBaslik:'g',      renk:C.rose    },
     { key:'magnesyum', label:'Magnezyum Glisinát', gunlukDoz:1,  birimBaslik:'kapsül', renk:C.purple },
-    { key:'psyllium',  label:'Psyllium Husk',      gunlukDoz:5,  birimBaslik:'g',      renk:C.green  },
+    { key:'psyllium',  label:'Psyllium Husk',      gunlukDoz:5,  birimBaslik:'g',      renk:C.emerald  },
     { key:'preWo',     label:'Pre-Workout',         gunlukDoz:1,  birimBaslik:'porsiyon', renk:C.orange },
     { key:'elektrolit',label:'Elektrolit',          gunlukDoz:1,  birimBaslik:'porsiyon', renk:C.blue },
   ];
 
   const EMILIM_TIPS = [
-    { emoji:'☀️', baslik:'D3 + K2 → Yağlı yemekle al', aciklama:'Yağda çözünen vitamin. Kahvaltı sonrası yumurta yağıyla emilim %30+ artar.', renk:C.lime },
+    { emoji:'☀️', baslik:'D3 + K2 → Yağlı yemekle al', aciklama:'Yağda çözünen vitamin. Kahvaltı sonrası yumurta yağıyla emilim %30+ artar.', renk:C.orchid },
     { emoji:'🍊', baslik:'C Vitamini → Demiri artırır',   aciklama:'C vitamini bitkisel demirin emilimini 3x artırır. Demir takviyeleri alıyorsan aynı anda iç.', renk:C.orange },
     { emoji:'🌙', baslik:'Magnezyum → Gece yatmadan',     aciklama:'Magnezyum glisinát gevşetici. Uyku kalitesini yükseltmek için yatmadan 30-60dk önce al.', renk:C.purple },
-    { emoji:'⏰', baslik:'Kreatin → Her gün aynı saatte', aciklama:'Timing önemsiz, tutarlılık önemli. Spor sonrası almak hafif avantaj sağlar.', renk:C.red },
+    { emoji:'⏰', baslik:'Kreatin → Her gün aynı saatte', aciklama:'Timing önemsiz, tutarlılık önemli. Spor sonrası almak hafif avantaj sağlar.', renk:C.rose },
     { emoji:'🚫', baslik:'Çinko → Kalsiyumdan uzak tut',  aciklama:'Kalsiyum, çinko emilimini engeller. Pre-workout veya öğün araları tercih et.', renk:C.muted },
   ];
 
@@ -360,7 +360,7 @@ function Vitamin() {
         const ayKaldi  = gunKaldi !== null ? Math.floor(gunKaldi / 30) : null;
         const dusuk    = gunKaldi !== null && gunKaldi < 10;
         return (
-          <TouchableOpacity key={sup.key} style={[d.vitStockRow, dusuk && { borderColor: C.red + '88' }]}
+          <TouchableOpacity key={sup.key} style={[d.vitStockRow, dusuk && { borderColor: C.rose + '88' }]}
             onPress={() => openEdit(sup)} activeOpacity={0.75}>
             <View style={{ flex:1 }}>
               <Text style={{ color:C.text, fontSize:13, fontWeight:'700' }}>{sup.label}</Text>
@@ -371,10 +371,10 @@ function Vitamin() {
             <View style={{ alignItems:'flex-end' }}>
               {gunKaldi !== null ? (
                 <>
-                  <Text style={{ color: dusuk ? C.red : sup.renk, fontSize:14, fontWeight:'900' }}>
+                  <Text style={{ color: dusuk ? C.rose : sup.renk, fontSize:14, fontWeight:'900' }}>
                     {mevcut} {sup.birimBaslik}
                   </Text>
-                  <Text style={{ color: dusuk ? C.red : C.muted, fontSize:10 }}>
+                  <Text style={{ color: dusuk ? C.rose : C.muted, fontSize:10 }}>
                     {dusuk ? '⚠️ ' : ''}{gunKaldi} gün{ayKaldi > 0 ? ` (~${ayKaldi} ay)` : ''} kaldı
                   </Text>
                 </>
@@ -516,7 +516,7 @@ function Detoks() {
       <View style={d.card}>
         <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
           <Text style={d.cardTitle}>📅 Son 7 Gün Tutarlılık</Text>
-          <Text style={{ color:C.lime, fontSize:13, fontWeight:'900' }}>{doneCount}/7</Text>
+          <Text style={{ color:C.orchid, fontSize:13, fontWeight:'900' }}>{doneCount}/7</Text>
         </View>
         <View style={{ flexDirection:'row', justifyContent:'space-between' }}>
           {consistency.map((day, i) => {
@@ -525,7 +525,7 @@ function Detoks() {
               <View key={i} style={{ alignItems:'center', gap:4 }}>
                 <View style={{
                   width:34, height:34, borderRadius:8,
-                  backgroundColor: day.noData ? C.s3 : day.done ? C.lime : C.red + '66',
+                  backgroundColor: day.noData ? C.s3 : day.done ? C.orchid : C.rose + '66',
                   alignItems:'center', justifyContent:'center',
                 }}>
                   <Text style={{ fontSize:16 }}>{day.noData ? '?' : day.done ? '✓' : '✗'}</Text>
@@ -553,13 +553,13 @@ function Detoks() {
             {/* Adım sayacı */}
             <View style={{ flexDirection:'row', gap:4, marginBottom:12 }}>
               {STEPS.map((_, i) => (
-                <View key={i} style={{ flex:1, height:4, borderRadius:2, backgroundColor: i < currentStep ? C.lime : i === currentStep ? C.blue : C.s3 }} />
+                <View key={i} style={{ flex:1, height:4, borderRadius:2, backgroundColor: i < currentStep ? C.orchid : i === currentStep ? C.blue : C.s3 }} />
               ))}
             </View>
 
             {/* Mevcut adım */}
             <View style={{ backgroundColor:C.s2, borderRadius:12, padding:16, marginBottom:12 }}>
-              <Text style={{ color:C.lime, fontSize:11, fontWeight:'700', marginBottom:4 }}>
+              <Text style={{ color:C.orchid, fontSize:11, fontWeight:'700', marginBottom:4 }}>
                 ADIM {currentStep + 1} / {STEPS.length}
               </Text>
               <Text style={{ color:C.text, fontSize:16, fontWeight:'800', marginBottom:6 }}>
@@ -596,9 +596,9 @@ function Detoks() {
       {/* İçerik bilgisi */}
       <Text style={[d.sectionTitle, { marginBottom:10 }]}>🌿 MALZEME & FAYDASI</Text>
       {[
-        ['Zencefil','1-2cm taze rendelenmiş','Anti-inflamatuar · Sindirim ↑ · Bağırsak hareketi ↑',C.green],
-        ['Limon','½ taze sıkılmış','Karaciğer detoksu · C vitamini · pH dengesi',C.lime],
-        ['Pancar','¼ küçük, suyunu sık','Nitrat → NO → kan dolaşımı ↑ · Cilt yenilenmesi',C.red],
+        ['Zencefil','1-2cm taze rendelenmiş','Anti-inflamatuar · Sindirim ↑ · Bağırsak hareketi ↑',C.emerald],
+        ['Limon','½ taze sıkılmış','Karaciğer detoksu · C vitamini · pH dengesi',C.orchid],
+        ['Pancar','¼ küçük, suyunu sık','Nitrat → NO → kan dolaşımı ↑ · Cilt yenilenmesi',C.rose],
         ['Zerdeçal','¼ tsp + kara biber','Kurkumin: anti-inflamatuar · Biber emilim için ŞART',C.orange],
         ['Ceylon Tarçını','¼ tsp','Kan şekeri dengesi · Antioksidan',C.orange],
         ['Kara Biber','1 tutam','Zerdeçal emilimini %2000 artırır',C.muted],
@@ -620,7 +620,7 @@ function Detoks() {
             <Text style={{ color:C.text, fontSize:13, fontWeight:'700' }}>{item.isim}</Text>
             <Text style={{ color:C.muted, fontSize:11 }}>{item.not}</Text>
           </View>
-          <Text style={{ color:C.lime, fontWeight:'800', fontSize:12 }}>{item.miktar}</Text>
+          <Text style={{ color:C.orchid, fontWeight:'800', fontSize:12 }}>{item.miktar}</Text>
         </View>
       ))}
       <View style={[d.mealNote, { marginTop:8 }]}>
@@ -636,10 +636,10 @@ function Uyku() {
   useFocusEffect(useCallback(() => { getSleepLogs().then(setLogs); }, []));
   function fmt(mins) { const h=Math.floor(mins/60); const m=mins%60; return `${h}s ${m>0?m+'dk':''}`.trim(); }
   function quality(mins) {
-    if (mins >= 450) return { label:'Mükemmel', color:C.green, pct:100 };
-    if (mins >= 390) return { label:'İyi',       color:C.lime,  pct:85  };
+    if (mins >= 450) return { label:'Mükemmel', color:C.emerald, pct:100 };
+    if (mins >= 390) return { label:'İyi',       color:C.orchid,  pct:85  };
     if (mins >= 360) return { label:'Orta',      color:C.orange,pct:65  };
-    return                  { label:'Yetersiz',  color:C.red,   pct:40  };
+    return                  { label:'Yetersiz',  color:C.rose,   pct:40  };
   }
   function fmtTime(iso) { const d=new Date(iso); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
   const avg = logs.length > 0 ? Math.round(logs.reduce((s,l)=>s+l.durationMins,0)/logs.length) : 0;
@@ -714,12 +714,12 @@ function Vucut() {
       </View>
       {latest && (
         <View style={[d.card,{borderColor:'rgba(52,211,153,0.3)'}]}>
-          <Text style={[d.cardTitle,{color:C.green,marginBottom:10}]}>Son Ölçüm — {fmtDate(latest.date)}</Text>
+          <Text style={[d.cardTitle,{color:C.emerald,marginBottom:10}]}>Son Ölçüm — {fmtDate(latest.date)}</Text>
           <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
             {[['Kilo',latest.kilo,'kg'],['Boy',latest.boy,'cm'],['Bel',latest.bel,'cm'],['Göğüs',latest.gogus,'cm'],['Kalça',latest.kalca,'cm'],['Sol Kol',latest.kolL,'cm'],['Sağ Kol',latest.kolR,'cm']].filter(([,v])=>v!==undefined).map(([label,val,unit])=>(
               <View key={label} style={d.measBox}><Text style={d.measVal}>{val}<Text style={{fontSize:10}}>{unit}</Text></Text><Text style={d.measLabel}>{label}</Text></View>
             ))}
-            {bmi(latest)&&<View style={[d.measBox,{borderColor:'rgba(232,244,74,0.3)'}]}><Text style={[d.measVal,{color:C.lime}]}>{bmi(latest)}</Text><Text style={d.measLabel}>BMI</Text></View>}
+            {bmi(latest)&&<View style={[d.measBox,{borderColor:'rgba(232,244,74,0.3)'}]}><Text style={[d.measVal,{color:C.orchid}]}>{bmi(latest)}</Text><Text style={d.measLabel}>BMI</Text></View>}
           </View>
         </View>
       )}
@@ -730,7 +730,7 @@ function Vucut() {
           <Text style={{color:C.muted,fontSize:11,width:90}}>{fmtDate(m.date)}</Text>
           <View style={{flex:1,flexDirection:'row',flexWrap:'wrap',gap:6}}>
             {[['⚖️',m.kilo,'kg'],['↕',m.boy,'cm'],['🔄',m.bel,'cm']].filter(([,v])=>v).map(([icon,val,unit],j)=>(<Text key={j} style={{color:C.text,fontSize:12}}>{icon} {val}{unit}</Text>))}
-            {bmi(m)&&<Text style={{color:C.lime,fontSize:12}}>BMI {bmi(m)}</Text>}
+            {bmi(m)&&<Text style={{color:C.orchid,fontSize:12}}>BMI {bmi(m)}</Text>}
           </View>
         </View>
       ))}
@@ -782,7 +782,7 @@ const d = StyleSheet.create({
   tabBar:        { backgroundColor:C.s1, borderBottomWidth:1, borderBottomColor:C.border, maxHeight:46, flexGrow:0 },
   tabBarContent: { paddingHorizontal:12, paddingVertical:6, gap:6, alignItems:'center' },
   tab:           { paddingHorizontal:14, paddingVertical:6, borderRadius:100, borderWidth:1, borderColor:C.border },
-  tabActive:     { backgroundColor:C.lime, borderColor:C.lime },
+  tabActive:     { backgroundColor:C.orchid, borderColor:C.orchid },
   tabText:       { color:C.muted, fontSize:12, fontWeight:'700' },
   tabTextActive: { color:C.bg },
 
@@ -791,7 +791,7 @@ const d = StyleSheet.create({
   mealBadge:     { borderWidth:1, borderColor:C.border, borderRadius:6, paddingHorizontal:8, paddingVertical:3 },
 
   infoCard:      { backgroundColor:'rgba(232,244,74,0.06)', borderWidth:1, borderColor:'rgba(232,244,74,0.2)', borderRadius:14, padding:14, marginBottom:14 },
-  infoTitle:     { color:C.lime, fontSize:14, fontWeight:'800', marginBottom:6 },
+  infoTitle:     { color:C.orchid, fontSize:14, fontWeight:'800', marginBottom:6 },
   infoText:      { color:C.muted, fontSize:13, lineHeight:20 },
 
   mealCard:      { backgroundColor:C.s1, borderWidth:1, borderColor:C.border, borderRadius:14, padding:14, marginBottom:10, overflow:'hidden' },
@@ -808,7 +808,7 @@ const d = StyleSheet.create({
   besinCard:     { backgroundColor:C.s2, borderRadius:10, padding:12, marginBottom:8, borderWidth:1, borderColor:C.border },
   besinIsim:     { color:C.text, fontSize:13, fontWeight:'700', marginBottom:6 },
   besinTag:      { backgroundColor:'rgba(232,244,74,0.1)', borderRadius:6, paddingHorizontal:8, paddingVertical:3 },
-  besinTagText:  { color:C.lime, fontSize:11, fontWeight:'600' },
+  besinTagText:  { color:C.orchid, fontSize:11, fontWeight:'600' },
   besinMakro:    { color:C.blue, fontSize:11, marginBottom:4, fontWeight:'600' },
   besinNot:      { color:C.muted, fontSize:12, lineHeight:18 },
   totalCard:     { backgroundColor:C.s2, borderRadius:12, padding:14, marginTop:8 },
@@ -821,17 +821,17 @@ const d = StyleSheet.create({
   vitaminRow:    { flexDirection:'row', gap:12, backgroundColor:C.s1, borderWidth:1, borderColor:C.border, borderRadius:10, padding:12, marginBottom:6 },
   vitaminDot:    { width:8, height:8, borderRadius:4, marginTop:5, flexShrink:0 },
   vitaminName:   { color:C.text, fontSize:13, fontWeight:'700' },
-  vitaminDoz:    { color:C.lime, fontSize:12, marginTop:2 },
+  vitaminDoz:    { color:C.orchid, fontSize:12, marginTop:2 },
   vitaminNot:    { color:C.muted, fontSize:11, marginTop:2, lineHeight:16 },
 
   tipCard:       { flexDirection:'row', alignItems:'flex-start', backgroundColor:C.s1, borderWidth:1, borderColor:C.border, borderLeftWidth:3, borderRadius:10, padding:12, marginBottom:8 },
   vitStockRow:   { flexDirection:'row', alignItems:'center', backgroundColor:C.s1, borderWidth:1, borderColor:C.border, borderRadius:10, padding:12, marginBottom:6 },
 
-  startBtn:      { backgroundColor:C.lime, borderRadius:12, padding:16, alignItems:'center' },
+  startBtn:      { backgroundColor:C.orchid, borderRadius:12, padding:16, alignItems:'center' },
 
-  sleepRow:      { backgroundColor:C.s1, borderWidth:1, borderColor:C.border, borderLeftWidth:3, borderLeftColor:C.green, borderRadius:10, padding:12, marginBottom:8, flexDirection:'row', alignItems:'center' },
+  sleepRow:      { backgroundColor:C.s1, borderWidth:1, borderColor:C.border, borderLeftWidth:3, borderLeftColor:C.emerald, borderRadius:10, padding:12, marginBottom:8, flexDirection:'row', alignItems:'center' },
 
-  addMeasBtn:    { backgroundColor:C.green, borderRadius:10, paddingHorizontal:12, paddingVertical:8 },
+  addMeasBtn:    { backgroundColor:C.emerald, borderRadius:10, paddingHorizontal:12, paddingVertical:8 },
   measBox:       { backgroundColor:C.s2, borderRadius:10, padding:10, alignItems:'center', borderWidth:1, borderColor:C.border, minWidth:72 },
   measVal:       { color:C.text, fontSize:16, fontWeight:'900' },
   measLabel:     { color:C.muted, fontSize:10, marginTop:2 },
@@ -844,5 +844,5 @@ const d = StyleSheet.create({
   measInput:     { width:100, height:40, backgroundColor:C.s2, borderRadius:10, borderWidth:1, borderColor:C.border, color:C.text, textAlign:'center', fontSize:14, fontWeight:'700' },
   smallModal:    { backgroundColor:C.s1, borderRadius:20, padding:20, borderWidth:1, borderColor:C.border, width:'85%', maxWidth:340 },
   cancelBtn:     { flex:1, height:44, borderRadius:12, borderWidth:1, borderColor:C.border, alignItems:'center', justifyContent:'center' },
-  saveBtn:       { flex:2, height:44, borderRadius:12, backgroundColor:C.lime, alignItems:'center', justifyContent:'center' },
+  saveBtn:       { flex:2, height:44, borderRadius:12, backgroundColor:C.orchid, alignItems:'center', justifyContent:'center' },
 });

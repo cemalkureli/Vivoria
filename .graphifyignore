@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+android/
+ios/
+graphify-out/
+.git/
+dist/
+build/
+*.lock
+*.log
+assets/
