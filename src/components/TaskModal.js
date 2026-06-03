@@ -8,22 +8,22 @@ import { C } from '../utils/theme';
 const { height } = Dimensions.get('window');
 
 const CATEGORY_COLOR = {
-  sabah:    C.lime,
+  sabah:    C.orchid,
   bakim:    C.purple,
-  beslenme: C.green,
+  beslenme: C.emerald,
   vitamin:  C.orange,
-  hareket:  C.green,
+  hareket:  C.emerald,
   is:       C.blue,
   su:       C.blue,
-  barfiks:  C.lime,
-  spor:     C.red,
+  barfiks:  C.orchid,
+  spor:     C.rose,
   gece:     C.purple,
 };
 
 export default function TaskModal({ task, visible, onClose, onDone, canComplete = true }) {
   if (!task) return null;
 
-  const accent = CATEGORY_COLOR[task.category] || C.lime;
+  const accent = CATEGORY_COLOR[task.category] || C.orchid;
   const hasSteps = task.steps && task.steps.length > 0;
 
   return (

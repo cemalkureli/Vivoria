@@ -17,6 +17,7 @@ import {
   getBodyMeasurements,
   getTodayWaterMl,
 } from '../utils/storage';
+import { getActiveRoutine } from '../lib/supabase';
 
 const { width: W } = Dimensions.get('window');
 
@@ -222,6 +223,7 @@ export default function HomeScreen() {
   const [latestBS,      setLatestBS]      = useState(null);
   const [latestBody,    setLatestBody]    = useState(null);
   const [waterMl,       setWaterMl]       = useState(0);
+  const [activeRoutine, setActiveRoutine] = useState(null);
 
   useFocusEffect(useCallback(() => {
     loadRoutineState();
@@ -232,15 +234,20 @@ export default function HomeScreen() {
   async function loadHealthData() {
     try {
       const [bp, bs, body, water] = await Promise.all([
-        getLatestBP(),
-        getLatestBS(),
-        getBodyMeasurements(),
-        getTodayWaterMl(),
+        getLatestBP(), getLatestBS(), getBodyMeasurements(), getTodayWaterMl(),
       ]);
       setLatestBP(bp);
       setLatestBS(bs);
       setLatestBody(body[0] ?? null);
       setWaterMl(water);
+    } catch (_) {}
+    // Active routine (needs auth)
+    try {
+      const { data } = await (await import('../lib/supabase')).supabase.auth.getUser();
+      if (data?.user) {
+        const ar = await getActiveRoutine(data.user.id);
+        setActiveRoutine(ar);
+      }
     } catch (_) {}
   }
 
@@ -366,6 +373,40 @@ export default function HomeScreen() {
         onToggle={() => toggleRoutine('postWorkout')}
         delay={320}
       />
+
+      {/* ── AKTİF RUTİN ── */}
+      {activeRoutine && (
+        <Animated.View entering={FadeInDown.delay(110).duration(400)} style={{ marginBottom: 14 }}>
+          <LinearGradient colors={['#1a0050', '#0d1638']} style={s.activeRoutineCard}>
+            <View style={s.activeRoutineHeader}>
+              <View style={[s.activeRoutineIcon, { backgroundColor: C.orchid + '25' }]}>
+                <Ionicons name="flask-outline" size={18} color={C.orchid} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.activeRoutineLabel}>Aktif Rutin</Text>
+                <Text style={s.activeRoutineTitle}>{activeRoutine.title}</Text>
+              </View>
+              <View style={[s.activeRoutinePill, { backgroundColor: C.orchid + '20', borderColor: C.orchid + '40' }]}>
+                <Text style={{ color: C.orchid, fontSize: 10, fontWeight: '800' }}>
+                  {activeRoutine.user_routine_steps?.length ?? 0} adım
+                </Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+              {(activeRoutine.user_routine_steps ?? []).slice(0, 4).map((step, i) => (
+                <View key={i} style={s.activeStepPill}>
+                  <Text style={s.activeStepTxt}>{step.products?.name ?? step.custom_product_name ?? '?'}</Text>
+                </View>
+              ))}
+              {(activeRoutine.user_routine_steps?.length ?? 0) > 4 && (
+                <View style={s.activeStepPill}>
+                  <Text style={s.activeStepTxt}>+{(activeRoutine.user_routine_steps?.length ?? 0) - 4} daha</Text>
+                </View>
+              )}
+            </View>
+          </LinearGradient>
+        </Animated.View>
+      )}
 
       {/* ── HEALTH DIARY ── */}
       <Animated.View entering={FadeInDown.delay(340).duration(400)}>
@@ -538,6 +579,16 @@ const s = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot:  { width: 12, height: 12, borderRadius: 4 },
   legendTxt:  { color: C.muted, fontSize: 10 },
+
+  // ─ Active routine card ─
+  activeRoutineCard:   { borderRadius: 18, padding: 14, borderWidth: 1, borderColor: C.orchid + '30' },
+  activeRoutineHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  activeRoutineIcon:   { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  activeRoutineLabel:  { color: C.muted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  activeRoutineTitle:  { color: C.text, fontSize: 14, fontWeight: '800' },
+  activeRoutinePill:   { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1 },
+  activeStepPill:      { backgroundColor: C.s2, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: C.border2 },
+  activeStepTxt:       { color: C.muted, fontSize: 9, fontWeight: '600' },
 
   // ─ Health Diary ─
   diaryGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },

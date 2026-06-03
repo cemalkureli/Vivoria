@@ -7,9 +7,17 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { C, GRAD } from '../utils/theme';
-import { supabase, getProfile, signOut } from '../lib/supabase';
+import { supabase, getProfile, signOut, getSkinProfile, upsertSkinProfile } from '../lib/supabase';
 import { useLang } from '../context/LanguageContext';
 import { t } from '../utils/i18n';
+
+const SKIN_TYPES = [
+  { key: 'yagli',  label: 'Yağlı',   color: C.blue    },
+  { key: 'kuru',   label: 'Kuru',    color: C.amber   },
+  { key: 'karma',  label: 'Karma',   color: C.cyan    },
+  { key: 'hassas', label: 'Hassas',  color: C.rose    },
+  { key: 'normal', label: 'Normal',  color: C.emerald },
+];
 
 const GOALS = ['goalSkinCare', 'goalHydration', 'goalAntiAging', 'goalAcneCare', 'goalBrightening'];
 
@@ -71,9 +79,11 @@ function StatPill({ icon, value, label, color }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ProfileScreen({ onSignOut }) {
   const { lang, setLang } = useLang();
-  const [profile, setProfile]       = useState(null);
-  const [user,    setUser]          = useState(null);
-  const [notifOn, setNotifOn]       = useState(true);
+  const [profile,    setProfile]    = useState(null);
+  const [user,       setUser]       = useState(null);
+  const [notifOn,    setNotifOn]    = useState(true);
+  const [skinType,   setSkinType]   = useState('karma');
+  const [skinSaving, setSkinSaving] = useState(false);
 
   useFocusEffect(useCallback(() => { loadProfile(); }, []));
 
@@ -82,10 +92,19 @@ export default function ProfileScreen({ onSignOut }) {
       const { data } = await supabase.auth.getUser();
       if (data?.user) {
         setUser(data.user);
-        const p = await getProfile(data.user.id);
+        const [p, sp] = await Promise.all([getProfile(data.user.id), getSkinProfile(data.user.id)]);
         setProfile(p);
+        if (sp?.skin_type) setSkinType(sp.skin_type);
       }
     } catch (_) {}
+  }
+
+  async function saveSkinType(type) {
+    setSkinType(type);
+    setSkinSaving(true);
+    try { if (user?.id) await upsertSkinProfile(user.id, type); }
+    catch (_) {}
+    setSkinSaving(false);
   }
 
   function confirmSignOut() {
@@ -130,6 +149,20 @@ export default function ProfileScreen({ onSignOut }) {
           </View>
         </LinearGradient>
       </Animated.View>
+
+      {/* ── CİLT TİPİ ── */}
+      <Section title="Cilt Tipi" delay={95}>
+        <View style={r.goalGrid}>
+          {SKIN_TYPES.map(s => (
+            <TouchableOpacity key={s.key} onPress={() => saveSkinType(s.key)}
+              style={[r.goalOption, skinType === s.key && { borderColor: s.color, backgroundColor: s.color + '14' }]}>
+              <Ionicons name={skinType === s.key ? 'checkmark-circle' : 'ellipse-outline'} size={14} color={skinType === s.key ? s.color : C.dim} />
+              <Text style={[r.goalOptionTxt, skinType === s.key && { color: s.color }]}>{s.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {skinSaving && <Text style={{ color: C.muted, fontSize: 10, textAlign: 'center', paddingBottom: 8 }}>Kaydediliyor...</Text>}
+      </Section>
 
       {/* ── HEALTH GOAL ── */}
       <Section title={t('healthGoal', lang)} delay={100}>

@@ -114,17 +114,4 @@ npx expo start
 
 ---
 
-## Knowledge Graph
-
-Generated with [graphify](https://graphify.dev):
-
-```bash
-graphify update .          # Update after code changes (AST only, no API cost)
-graphify query "routines"  # Query the graph
-```
-
-Graph: `graphify-out/` — 221 nodes, 323 links, 15 communities
-
----
-
 *Built with ❤️ — Vivoria · vital intelligence*

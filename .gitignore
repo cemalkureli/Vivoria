@@ -5,3 +5,10 @@ ios/
 dist/
 build/
 *.log
+.env
+
+# Internal tooling — not for public repo
+graphify-out/
+.graphifyignore
+*.obsidian
+
