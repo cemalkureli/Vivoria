@@ -1,7 +1,7 @@
 export default {
   expo: {
-    name: 'Healthcare',
-    slug: 'healthcare',
+    name: 'Vivoria',
+    slug: 'vivoria',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/os.png',
@@ -9,7 +9,7 @@ export default {
     newArchEnabled: true,
     splash: { image: './assets/splash.png', backgroundColor: '#060d24', resizeMode: 'contain' },
     android: {
-      package: 'com.healthcare.app',
+      package: 'com.vivoria.app',
       adaptiveIcon: { foregroundImage: './assets/os.png', backgroundColor: '#060d24' },
       permissions: [
         'RECEIVE_BOOT_COMPLETED',
@@ -23,7 +23,7 @@ export default {
         'REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
       ],
     },
-    ios: { bundleIdentifier: 'com.healthcare.app' },
+    ios: { bundleIdentifier: 'com.vivoria.app' },
     plugins: [
       [
         'expo-notifications',

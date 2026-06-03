@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Healthcare",
-    "slug": "healthcare",
+    "name": "Vivoria",
+    "slug": "vivoria",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/os.png",
@@ -10,14 +10,14 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#07080b"
+      "backgroundColor": "#060d24"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/os.png",
-        "backgroundColor": "#07080b"
+        "backgroundColor": "#060d24"
       },
-      "package": "com.healthcare.app",
+      "package": "com.vivoria.app",
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
@@ -35,7 +35,7 @@
         "expo-notifications",
         {
           "icon": "./assets/os.png",
-          "color": "#e8f44a",
+          "color": "#d946a8",
           "sounds": ["./assets/alarm.mp3"],
           "mode": "production"
         }

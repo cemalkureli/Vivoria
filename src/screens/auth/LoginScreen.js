@@ -15,8 +15,8 @@ import LangToggle from '../../components/LangToggle';
 
 export default function LoginScreen({ onSuccess, onGoRegister }) {
   const { lang } = useLang();
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
+  const [email,    setEmail]    = useState('admin@vivoria.app');
+  const [password, setPassword] = useState('Vivoria2026!');
   const [showPass, setShowPass] = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
@@ -56,7 +56,7 @@ export default function LoginScreen({ onSuccess, onGoRegister }) {
                 <Ionicons name="heart-outline" size={32} color="#060d24" />
               </LinearGradient>
             </View>
-            <Text style={s.logoText}>HEALTH<Text style={s.logoDim}>/CARE</Text></Text>
+            <Text style={s.logoText}>VIV<Text style={s.logoDim}>O</Text>RIA</Text>
             <Text style={s.tagline}>{t('welcome', lang)}</Text>
           </Animated.View>
 

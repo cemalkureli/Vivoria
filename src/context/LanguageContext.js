@@ -7,12 +7,12 @@ export function LanguageProvider({ children }) {
   const [lang, setLangState] = useState('tr');
 
   useEffect(() => {
-    AsyncStorage.getItem('healthcare_lang').then(v => { if (v) setLangState(v); });
+    AsyncStorage.getItem('vivoria_lang').then(v => { if (v) setLangState(v); });
   }, []);
 
   const setLang = (l) => {
     setLangState(l);
-    AsyncStorage.setItem('healthcare_lang', l);
+    AsyncStorage.setItem('vivoria_lang', l);
   };
 
   return (

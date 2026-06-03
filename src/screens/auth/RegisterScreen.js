@@ -71,7 +71,7 @@ export default function RegisterScreen({ onSuccess, onGoLogin }) {
                 <Ionicons name="person-add-outline" size={30} color="#060d24" />
               </LinearGradient>
             </View>
-            <Text style={s.logoText}>HEALTH<Text style={s.logoDim}>/CARE</Text></Text>
+            <Text style={s.logoText}>VIV<Text style={s.logoDim}>O</Text>RIA</Text>
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(150).duration(500).springify()} style={s.card}>
