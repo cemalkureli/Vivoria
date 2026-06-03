@@ -2,17 +2,23 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, Modal, TextInput, KeyboardAvoidingView,
-  Platform, Animated,
+  Platform, Animated, FlatList, Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
-import { C } from '../utils/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { C, GRAD } from '../utils/theme';
 import {
   getSleepLogs, getBodyMeasurements, saveBodyMeasurement,
   getDoneToday, getVitaminStock, saveVitaminStock,
+  saveBPRecord, getBPLogs, classifyBP,
+  saveBSRecord, getBSLogs, classifyBS,
+  getTodayWaterMl, addWaterMl,
 } from '../utils/storage';
 import { getRecentLog } from '../utils/dailyLog';
 
-const TABS = ['Beslenme', 'Su', 'Vitamin', 'Detoks', 'Uyku', 'Vücut'];
+const TABS = ['Tansiyon', 'Kan Şekeri', 'Beslenme', 'Su', 'Vitamin', 'Detoks', 'Uyku', 'Vücut'];
+const W = Dimensions.get('window').width;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function getLast7Dates() {
@@ -22,6 +28,424 @@ function getLast7Dates() {
   });
 }
 const GUN_LABELS = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+
+// ─── Drum-roll number picker ──────────────────────────────────────────────────
+function DrumPicker({ min, max, value, onChange, color, width = 80 }) {
+  const ITEM_H = 44;
+  const VISIBLE = 5;
+  const values = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const idx = values.indexOf(value);
+    if (idx >= 0) {
+      setTimeout(() => ref.current?.scrollToIndex({ index: idx, animated: false }), 100);
+    }
+  }, []);
+
+  return (
+    <View style={{ width, height: ITEM_H * VISIBLE, overflow: 'hidden', borderRadius: 12, backgroundColor: C.s2, borderWidth: 1, borderColor: C.border2 }}>
+      {/* selection highlight */}
+      <View style={{ position: 'absolute', top: ITEM_H * 2, height: ITEM_H, width: '100%', backgroundColor: color + '20', borderTopWidth: 1, borderBottomWidth: 1, borderColor: color + '50', zIndex: 1 }} pointerEvents="none" />
+      <FlatList
+        ref={ref}
+        data={values}
+        keyExtractor={v => String(v)}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={ITEM_H}
+        decelerationRate="fast"
+        getItemLayout={(_, idx) => ({ length: ITEM_H, offset: ITEM_H * idx, index: idx })}
+        onMomentumScrollEnd={e => {
+          const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
+          onChange(values[Math.max(0, Math.min(idx, values.length - 1))]);
+        }}
+        ListHeaderComponent={<View style={{ height: ITEM_H * 2 }} />}
+        ListFooterComponent={<View style={{ height: ITEM_H * 2 }} />}
+        renderItem={({ item }) => (
+          <View style={{ height: ITEM_H, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: item === value ? color : C.muted, fontSize: item === value ? 22 : 15, fontWeight: item === value ? '900' : '400' }}>
+              {item}
+            </Text>
+          </View>
+        )}
+      />
+    </View>
+  );
+}
+
+// ─── BP classification legend ─────────────────────────────────────────────────
+const BP_CLASSES = [
+  { label: 'Hipotansiyon', color: '#4a80e8', sys: '<90',    dia: '<60'   },
+  { label: 'Normal',       color: '#10b981', sys: '90-119', dia: '60-79' },
+  { label: 'Yüksek',       color: '#f59e0b', sys: '120-129',dia: '<80'  },
+  { label: 'HT Evre 1',    color: '#f97316', sys: '130-139',dia: '80-89' },
+  { label: 'HT Evre 2',    color: '#ea580c', sys: '140-179',dia: '90-119'},
+  { label: 'Kriz',         color: '#f43f5e', sys: '≥180',   dia: '≥120' },
+];
+
+// ─── Recommended Reading articles ─────────────────────────────────────────────
+const ARTICLES = [
+  { title: 'Uykunun kalp sağlığına etkisi',          emoji: '💤' },
+  { title: 'Yüksek tansiyona yol açan faktörler',    emoji: '⚠️' },
+  { title: 'Tansiyonu düşürme ve yönetme yolları',   emoji: '💊' },
+  { title: 'Tuz tüketimi ve hipertansiyon ilişkisi', emoji: '🧂' },
+  { title: 'Günde 30 dakika yürüyüşün faydaları',    emoji: '🚶' },
+];
+
+// ─── Tansiyon (Blood Pressure) tab ────────────────────────────────────────────
+function Tansiyon() {
+  const [logs,     setLogs]     = useState([]);
+  const [modal,    setModal]    = useState(false);
+  const [sys,      setSys]      = useState(120);
+  const [dia,      setDia]      = useState(80);
+  const [pulse,    setPulse]    = useState(70);
+  const [note,     setNote]     = useState('');
+  const [noteVisible, setNoteVisible] = useState(false);
+
+  useFocusEffect(useCallback(() => { getBPLogs().then(setLogs); }, []));
+
+  const saveRecord = async () => {
+    await saveBPRecord({ sys, dia, pulse, note });
+    const updated = await getBPLogs();
+    setLogs(updated);
+    setModal(false);
+    setNote('');
+  };
+
+  // 24h average (last 24 logs max)
+  const last24 = logs.slice(0, 24);
+  const avgSys   = last24.length ? Math.round(last24.reduce((s, l) => s + l.sys,   0) / last24.length) : null;
+  const avgDia   = last24.length ? Math.round(last24.reduce((s, l) => s + l.dia,   0) / last24.length) : null;
+  const avgPulse = last24.length ? Math.round(last24.reduce((s, l) => s + l.pulse, 0) / last24.length) : null;
+
+  // Bar chart: last 7 readings
+  const chart7 = logs.slice(0, 7).reverse();
+  const chartMax = Math.max(...chart7.map(l => l.sys), 140);
+
+  const curClass = classifyBP(sys, dia);
+
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+  }
+
+  return (
+    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+
+      {/* ── LEGEND ── */}
+      <View style={d.card}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {BP_CLASSES.map(c => (
+            <View key={c.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.color }} />
+              <Text style={{ color: C.muted, fontSize: 10, fontWeight: '600' }}>{c.label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* ── 24h AVERAGE ── */}
+      {avgSys !== null && (
+        <View style={[d.card, { borderColor: classifyBP(avgSys, avgDia).color + '50' }]}>
+          <Text style={[d.cardTitle, { marginBottom: 12 }]}>24 Saat Ortalaması</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
+            {[['Sistolik', avgSys, 'mmHg', C.orchid], ['Diastolik', avgDia, 'mmHg', C.cyan], ['Nabız', avgPulse, 'BPM', C.amber]].map(([lbl, val, unit, color]) => (
+              <View key={lbl} style={{ alignItems: 'center' }}>
+                <Text style={{ color: C.muted, fontSize: 11, marginBottom: 4 }}>{lbl}</Text>
+                <Text style={{ color, fontSize: 32, fontWeight: '900', lineHeight: 34 }}>{val}</Text>
+                <Text style={{ color: C.muted, fontSize: 11 }}>{unit}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={{ marginTop: 12, alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', backgroundColor: classifyBP(avgSys, avgDia).color + '18', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5, borderWidth: 1, borderColor: classifyBP(avgSys, avgDia).color + '40' }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: classifyBP(avgSys, avgDia).color }} />
+              <Text style={{ color: classifyBP(avgSys, avgDia).color, fontSize: 13, fontWeight: '800' }}>{classifyBP(avgSys, avgDia).label}</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* ── BAR CHART ── */}
+      {chart7.length > 0 && (
+        <View style={d.card}>
+          <Text style={[d.cardTitle, { marginBottom: 14 }]}>Son {chart7.length} Ölçüm</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 120 }}>
+            {chart7.map((l, i) => {
+              const cls = classifyBP(l.sys, l.dia);
+              const barH = Math.max((l.sys / chartMax) * 100, 12);
+              const d2 = new Date(l.date);
+              return (
+                <View key={i} style={{ alignItems: 'center', gap: 4 }}>
+                  <Text style={{ color: C.muted, fontSize: 9 }}>{l.sys}</Text>
+                  <View style={{ width: 28, height: barH, backgroundColor: cls.color, borderRadius: 8 }} />
+                  <Text style={{ color: C.muted, fontSize: 9 }}>{l.dia}</Text>
+                  <Text style={{ color: C.dim, fontSize: 8 }}>{d2.getDate()}/{d2.getMonth()+1}</Text>
+                </View>
+              );
+            })}
+          </View>
+          {/* Gradient color scale */}
+          <View style={{ flexDirection: 'row', height: 6, borderRadius: 3, overflow: 'hidden', marginTop: 12 }}>
+            {BP_CLASSES.map(c => <View key={c.label} style={{ flex: 1, backgroundColor: c.color }} />)}
+          </View>
+        </View>
+      )}
+
+      {/* ── RECOMMENDED READING ── */}
+      <Text style={[d.sectionTitle, { marginBottom: 10, marginTop: 4 }]}>ÖNERİLEN OKUMALAR</Text>
+      {ARTICLES.map((a, i) => (
+        <View key={i} style={[d.suRow, { gap: 12 }]}>
+          <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: C.s2, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 22 }}>{a.emoji}</Text>
+          </View>
+          <Text style={{ color: C.text, fontSize: 13, fontWeight: '600', flex: 1 }}>{a.title}</Text>
+          <Ionicons name="chevron-forward" size={14} color={C.dim} />
+        </View>
+      ))}
+
+      {/* ── REMINDER CARD ── */}
+      <View style={[d.card, { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 8, borderColor: C.cyan + '40' }]}>
+        <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: C.cyan + '20', alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="alarm-outline" size={24} color={C.cyan} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[d.cardTitle, { color: C.cyan }]}>Hatırlatıcı</Text>
+          <Text style={{ color: C.muted, fontSize: 12 }}>Ölçüm için akıllı alarm kur</Text>
+        </View>
+        <View style={{ backgroundColor: C.cyan + '20', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: C.cyan + '50' }}>
+          <Text style={{ color: C.cyan, fontSize: 12, fontWeight: '700' }}>Ekle ▶</Text>
+        </View>
+      </View>
+
+      {/* ── HISTORY ── */}
+      {logs.length > 0 && (
+        <>
+          <Text style={[d.sectionTitle, { marginBottom: 10, marginTop: 8 }]}>GEÇMİŞ ÖLÇÜMLER</Text>
+          {logs.slice(0, 10).map((l, i) => {
+            const cls = classifyBP(l.sys, l.dia);
+            return (
+              <View key={i} style={[d.suRow, { borderLeftWidth: 3, borderLeftColor: cls.color }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: C.text, fontSize: 15, fontWeight: '800' }}>
+                    {l.sys}/{l.dia} <Text style={{ color: C.muted, fontSize: 11, fontWeight: '400' }}>mmHg</Text>
+                    {'  '}<Text style={{ color: C.amber, fontSize: 13 }}>{l.pulse} BPM</Text>
+                  </Text>
+                  <Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>{fmtDate(l.date)}{l.note ? ' · ' + l.note : ''}</Text>
+                </View>
+                <View style={{ backgroundColor: cls.color + '20', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                  <Text style={{ color: cls.color, fontSize: 11, fontWeight: '700' }}>{cls.label}</Text>
+                </View>
+              </View>
+            );
+          })}
+        </>
+      )}
+
+      {/* ── ADD RECORD BUTTON ── */}
+      <TouchableOpacity onPress={() => setModal(true)} activeOpacity={0.85} style={{ marginTop: 16 }}>
+        <LinearGradient colors={GRAD.orchid} style={{ borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '900' }}>+ Kayıt Ekle</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+
+      {/* ── ADD RECORD MODAL ── */}
+      <Modal visible={modal} transparent animationType="slide" onRequestClose={() => setModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <TouchableOpacity style={d.overlay} activeOpacity={1} onPress={() => setModal(false)}>
+            <TouchableOpacity activeOpacity={1} style={[d.measModal, { maxHeight: '90%' }]} onPress={() => {}}>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Text style={d.measModalTitle}>Yeni Tansiyon Kaydı</Text>
+
+                {/* Drum pickers */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 16 }}>
+                  <View style={{ alignItems: 'center', gap: 6 }}>
+                    <DrumPicker min={60} max={200} value={sys} onChange={setSys} color={C.orchid} />
+                    <Text style={{ color: C.muted, fontSize: 11 }}>Sistolik</Text>
+                  </View>
+                  <View style={{ alignItems: 'center', gap: 6 }}>
+                    <DrumPicker min={40} max={130} value={dia} onChange={setDia} color={C.cyan} />
+                    <Text style={{ color: C.muted, fontSize: 11 }}>Diastolik</Text>
+                  </View>
+                  <View style={{ alignItems: 'center', gap: 6 }}>
+                    <DrumPicker min={40} max={180} value={pulse} onChange={setPulse} color={C.amber} />
+                    <Text style={{ color: C.muted, fontSize: 11 }}>Nabız</Text>
+                  </View>
+                </View>
+
+                {/* Live classification */}
+                <View style={{ alignItems: 'center', marginBottom: 14 }}>
+                  <View style={{ backgroundColor: curClass.color + '20', borderRadius: 20, paddingHorizontal: 18, paddingVertical: 7, borderWidth: 1, borderColor: curClass.color + '50' }}>
+                    <Text style={{ color: curClass.color, fontSize: 15, fontWeight: '900' }}>{curClass.label}</Text>
+                  </View>
+                  <Text style={{ color: C.muted, fontSize: 11, marginTop: 4 }}>SIS {sys}–{sys+10} ve DIA {dia}–{dia+10}</Text>
+                </View>
+
+                {/* Gradient bar */}
+                <View style={{ flexDirection: 'row', height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 14 }}>
+                  {BP_CLASSES.map(c => <View key={c.label} style={{ flex: 1, backgroundColor: c.color }} />)}
+                </View>
+
+                {/* Note toggle */}
+                <TouchableOpacity onPress={() => setNoteVisible(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, alignSelf: 'flex-end' }}>
+                  <Ionicons name="document-text-outline" size={14} color={C.orchid} />
+                  <Text style={{ color: C.orchid, fontSize: 12, fontWeight: '700' }}>Not {noteVisible ? '▲' : '+'}</Text>
+                </TouchableOpacity>
+                {noteVisible && (
+                  <TextInput
+                    style={[d.measInput, { width: '100%', height: 44, marginBottom: 12, textAlign: 'left', paddingHorizontal: 12 }]}
+                    value={note} onChangeText={setNote}
+                    placeholder="Not ekle..." placeholderTextColor={C.muted}
+                  />
+                )}
+
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity style={d.cancelBtn} onPress={() => setModal(false)}>
+                    <Text style={{ color: C.muted, fontWeight: '700' }}>İptal</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={d.saveBtn} onPress={saveRecord}>
+                    <Text style={{ color: C.bg, fontWeight: '900' }}>Kaydet ✓</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
+
+    </ScrollView>
+  );
+}
+
+// ─── Kan Şekeri (Blood Sugar) tab ─────────────────────────────────────────────
+function KanSekeri() {
+  const [logs,   setLogs]   = useState([]);
+  const [modal,  setModal]  = useState(false);
+  const [value,  setValue]  = useState(100);
+  const [type,   setType]   = useState('Açken');
+  const [note,   setNote]   = useState('');
+
+  useFocusEffect(useCallback(() => { getBSLogs().then(setLogs); }, []));
+
+  const saveRecord = async () => {
+    await saveBSRecord({ value, unit: 'mg/dL', type, note });
+    setLogs(await getBSLogs());
+    setModal(false);
+  };
+
+  const latest = logs[0];
+  const latestCls = latest ? classifyBS(latest.value, latest.type) : null;
+
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+  }
+
+  return (
+    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+
+      {/* ── LAST READING ── */}
+      {latest && (
+        <View style={[d.card, { borderColor: latestCls.color + '50' }]}>
+          <Text style={d.cardTitle}>Son Ölçüm</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 12 }}>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={{ color: latestCls.color, fontSize: 48, fontWeight: '900', lineHeight: 52 }}>{latest.value}</Text>
+              <Text style={{ color: C.muted, fontSize: 13 }}>mg/dL</Text>
+              <View style={{ backgroundColor: latestCls.color + '20', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4, marginTop: 6, borderWidth: 1, borderColor: latestCls.color + '40' }}>
+                <Text style={{ color: latestCls.color, fontSize: 12, fontWeight: '800' }}>{latestCls.label}</Text>
+              </View>
+            </View>
+            <View style={{ flex: 1, gap: 6 }}>
+              <View style={[d.suRow, { borderLeftWidth: 3, borderLeftColor: '#10b981' }]}>
+                <View><Text style={{ color: C.muted, fontSize: 10 }}>Açken Normal</Text><Text style={{ color: C.text, fontSize: 12 }}>70–99 mg/dL</Text></View>
+              </View>
+              <View style={[d.suRow, { borderLeftWidth: 3, borderLeftColor: '#f59e0b' }]}>
+                <View><Text style={{ color: C.muted, fontSize: 10 }}>Açken Riskli</Text><Text style={{ color: C.text, fontSize: 12 }}>100–125 mg/dL</Text></View>
+              </View>
+              <View style={[d.suRow, { borderLeftWidth: 3, borderLeftColor: '#f43f5e' }]}>
+                <View><Text style={{ color: C.muted, fontSize: 10 }}>Diyabet</Text><Text style={{ color: C.text, fontSize: 12 }}>≥126 mg/dL</Text></View>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* ── TYPE SELECTOR ── */}
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+        {['Açken', 'Tokluk', 'Rastgele'].map(tp => (
+          <TouchableOpacity key={tp} onPress={() => setType(tp)}
+            style={{ flex: 1, paddingVertical: 8, borderRadius: 12, borderWidth: 1, alignItems: 'center',
+              borderColor: type === tp ? C.orchid : C.border2,
+              backgroundColor: type === tp ? C.orchid + '18' : 'transparent' }}>
+            <Text style={{ color: type === tp ? C.orchid : C.muted, fontSize: 12, fontWeight: '700' }}>{tp}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* ── HISTORY ── */}
+      {logs.length > 0 && (
+        <>
+          <Text style={[d.sectionTitle, { marginBottom: 10 }]}>GEÇMİŞ ÖLÇÜMLER</Text>
+          {logs.slice(0, 10).map((l, i) => {
+            const cls = classifyBS(l.value, l.type);
+            return (
+              <View key={i} style={[d.suRow, { borderLeftWidth: 3, borderLeftColor: cls.color }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: C.text, fontSize: 15, fontWeight: '800' }}>
+                    {l.value} <Text style={{ color: C.muted, fontSize: 11, fontWeight: '400' }}>{l.unit}</Text>
+                  </Text>
+                  <Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>{fmtDate(l.date)} · {l.type}</Text>
+                </View>
+                <View style={{ backgroundColor: cls.color + '20', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                  <Text style={{ color: cls.color, fontSize: 11, fontWeight: '700' }}>{cls.label}</Text>
+                </View>
+              </View>
+            );
+          })}
+        </>
+      )}
+
+      <TouchableOpacity onPress={() => setModal(true)} activeOpacity={0.85} style={{ marginTop: 16 }}>
+        <LinearGradient colors={GRAD.orchid} style={{ borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '900' }}>+ Kayıt Ekle</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+
+      <Modal visible={modal} transparent animationType="slide" onRequestClose={() => setModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <TouchableOpacity style={d.overlay} activeOpacity={1} onPress={() => setModal(false)}>
+            <TouchableOpacity activeOpacity={1} style={d.measModal} onPress={() => {}}>
+              <Text style={d.measModalTitle}>Kan Şekeri Kaydı</Text>
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <DrumPicker min={40} max={500} value={value} onChange={setValue} color={C.orchid} width={100} />
+                <Text style={{ color: C.muted, fontSize: 12, marginTop: 6 }}>mg/dL</Text>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+                {['Açken', 'Tokluk', 'Rastgele'].map(tp => (
+                  <TouchableOpacity key={tp} onPress={() => setType(tp)}
+                    style={{ flex: 1, paddingVertical: 7, borderRadius: 10, borderWidth: 1, alignItems: 'center',
+                      borderColor: type === tp ? C.orchid : C.border2,
+                      backgroundColor: type === tp ? C.orchid + '18' : 'transparent' }}>
+                    <Text style={{ color: type === tp ? C.orchid : C.muted, fontSize: 12, fontWeight: '700' }}>{tp}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity style={d.cancelBtn} onPress={() => setModal(false)}>
+                  <Text style={{ color: C.muted, fontWeight: '700' }}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={d.saveBtn} onPress={saveRecord}>
+                  <Text style={{ color: C.bg, fontWeight: '900' }}>Kaydet ✓</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
+    </ScrollView>
+  );
+}
 
 // ─── Beslenme ─────────────────────────────────────────────────────────────────
 function Beslenme() {
@@ -759,8 +1183,8 @@ function Vucut() {
 
 // ─── Ana ─────────────────────────────────────────────────────────────────────
 export default function DetailsScreen() {
-  const [activeTab, setActiveTab] = useState('Beslenme');
-  const components = { Beslenme, Su, Vitamin, Detoks, Uyku, 'Vücut': Vucut };
+  const [activeTab, setActiveTab] = useState('Tansiyon');
+  const components = { 'Tansiyon': Tansiyon, 'Kan Şekeri': KanSekeri, Beslenme, Su, Vitamin, Detoks, Uyku, 'Vücut': Vucut };
   const ActiveComp = components[activeTab];
   return (
     <View style={d.root}>

@@ -52,7 +52,7 @@ const navTheme = {
 const TABS = [
   { name: 'Ana',      icon: 'heart',      outline: 'heart-outline',       labelKey: 'tabHome'    },
   { name: 'Bakım',    icon: 'flask',      outline: 'flask-outline',        labelKey: 'tabCare'    },
-  { name: 'Detaylar', icon: 'analytics',  outline: 'analytics-outline',    labelKey: 'tabDetails' },
+  { name: 'Detaylar', icon: 'pulse',       outline: 'pulse-outline',         labelKey: 'tabDetails' },
   { name: 'Alarmlar', icon: 'timer',      outline: 'timer-outline',        labelKey: 'tabAlarms'  },
   { name: 'Profil',   icon: 'person-circle', outline: 'person-circle-outline', labelKey: 'tabProfile' },
 ];
@@ -60,7 +60,7 @@ const TABS = [
 const TAB_COLORS = {
   Ana:      C.orchid,
   Bakım:    C.cyan,
-  Detaylar: C.blue,
+  Detaylar: C.rose,
   Alarmlar: C.amber,
   Profil:   C.purple,
 };

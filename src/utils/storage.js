@@ -186,3 +186,86 @@ export async function getVitaminStock() {
 export async function saveVitaminStock(data) {
   await AsyncStorage.setItem(KEY_VITAMIN_STOCK, JSON.stringify(data));
 }
+
+// ─── Tansiyon (Blood Pressure) ────────────────────────────────────────────────
+const KEY_BP = 'vivoria_bp_logs';
+
+export async function saveBPRecord({ sys, dia, pulse, note = '' }) {
+  const raw  = await AsyncStorage.getItem(KEY_BP);
+  const logs = raw ? JSON.parse(raw) : [];
+  logs.unshift({ sys, dia, pulse, note, date: new Date().toISOString() });
+  if (logs.length > 100) logs.length = 100;
+  await AsyncStorage.setItem(KEY_BP, JSON.stringify(logs));
+}
+
+export async function getBPLogs() {
+  const raw = await AsyncStorage.getItem(KEY_BP);
+  return raw ? JSON.parse(raw) : [];
+}
+
+export async function getLatestBP() {
+  const logs = await getBPLogs();
+  return logs[0] ?? null;
+}
+
+export function classifyBP(sys, dia) {
+  if (sys < 90 || dia < 60)                              return { label: 'Hipotansiyon',     color: '#4a80e8', short: 'Hypo'   };
+  if (sys <= 119 && dia <= 79)                           return { label: 'Normal',            color: '#10b981', short: 'Normal' };
+  if ((sys >= 120 && sys <= 129) && dia < 80)            return { label: 'Yüksek',            color: '#f59e0b', short: 'Elev.'  };
+  if ((sys >= 130 && sys <= 139) || (dia >= 80 && dia <= 89)) return { label: 'HT Evre 1',   color: '#f97316', short: 'HT-1'   };
+  if (sys >= 140 && sys <= 179 || dia >= 90 && dia <= 119)    return { label: 'HT Evre 2',   color: '#ea580c', short: 'HT-2'   };
+  return                                                      { label: 'Hipertansif Kriz',   color: '#f43f5e', short: 'Kriz'   };
+}
+
+// ─── Kan Şekeri (Blood Sugar) ─────────────────────────────────────────────────
+const KEY_BS = 'vivoria_bs_logs';
+
+export async function saveBSRecord({ value, unit = 'mg/dL', type = 'Açken', note = '' }) {
+  const raw  = await AsyncStorage.getItem(KEY_BS);
+  const logs = raw ? JSON.parse(raw) : [];
+  logs.unshift({ value, unit, type, note, date: new Date().toISOString() });
+  if (logs.length > 100) logs.length = 100;
+  await AsyncStorage.setItem(KEY_BS, JSON.stringify(logs));
+}
+
+export async function getBSLogs() {
+  const raw = await AsyncStorage.getItem(KEY_BS);
+  return raw ? JSON.parse(raw) : [];
+}
+
+export async function getLatestBS() {
+  const logs = await getBSLogs();
+  return logs[0] ?? null;
+}
+
+export function classifyBS(value, type = 'Açken') {
+  if (type === 'Açken') {
+    if (value < 70)           return { label: 'Düşük',   color: '#4a80e8' };
+    if (value <= 99)          return { label: 'Normal',  color: '#10b981' };
+    if (value <= 125)         return { label: 'Riskli',  color: '#f59e0b' };
+    return                           { label: 'Yüksek',  color: '#f43f5e' };
+  }
+  if (value < 140)            return { label: 'Normal',  color: '#10b981' };
+  if (value <= 199)           return { label: 'Riskli',  color: '#f59e0b' };
+  return                             { label: 'Yüksek',  color: '#f43f5e' };
+}
+
+// ─── Su takibi ────────────────────────────────────────────────────────────────
+const KEY_WATER = 'vivoria_water_';
+
+function waterKey() { return KEY_WATER + new Date().toISOString().split('T')[0]; }
+
+export async function getTodayWaterMl() {
+  const raw = await AsyncStorage.getItem(waterKey());
+  return raw ? parseInt(raw, 10) : 0;
+}
+
+export async function addWaterMl(ml) {
+  const cur = await getTodayWaterMl();
+  await AsyncStorage.setItem(waterKey(), String(cur + ml));
+  return cur + ml;
+}
+
+export async function setTodayWaterMl(ml) {
+  await AsyncStorage.setItem(waterKey(), String(ml));
+}

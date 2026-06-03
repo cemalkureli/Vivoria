@@ -11,6 +11,12 @@ import { C, GRAD } from '../utils/theme';
 import { supabase } from '../lib/supabase';
 import { useLang } from '../context/LanguageContext';
 import { t, DAYS_SHORT, MONTHS_SHORT } from '../utils/i18n';
+import {
+  getLatestBP, classifyBP,
+  getLatestBS, classifyBS,
+  getBodyMeasurements,
+  getTodayWaterMl,
+} from '../utils/storage';
 
 const { width: W } = Dimensions.get('window');
 
@@ -148,6 +154,25 @@ function RoutineCard({ icon, title, subtitle, color, done, onToggle, delay }) {
   );
 }
 
+// ─── Health Diary card ────────────────────────────────────────────────────────
+function DiaryCard({ icon, title, value, unit, sub, color, delay }) {
+  return (
+    <Animated.View entering={FadeInDown.delay(delay).duration(380)} style={[s.diaryCard, { borderColor: color + '35' }]}>
+      <LinearGradient colors={[color + '18', color + '06']} style={s.diaryGrad}>
+        <View style={[s.diaryIconBg, { backgroundColor: color + '25' }]}>
+          <Ionicons name={icon} size={22} color={color} />
+        </View>
+        <Text style={s.diaryTitle}>{title}</Text>
+        <Text style={[s.diaryValue, { color }]}>
+          {value ?? '—'}
+          {value && unit ? <Text style={s.diaryUnit}> {unit}</Text> : null}
+        </Text>
+        {sub ? <Text style={s.diarySub}>{sub}</Text> : null}
+      </LinearGradient>
+    </Animated.View>
+  );
+}
+
 // ─── Weekly heatmap ──────────────────────────────────────────────────────────
 function WeekHeatmap({ completedDays, lang }) {
   const days  = DAYS_SHORT[lang] ?? DAYS_SHORT.tr;
@@ -193,11 +218,31 @@ export default function HomeScreen() {
   const [routines,      setRoutines]      = useState({ morning: false, night: false, postWorkout: false });
   const [streak,        setStreak]        = useState(0);
   const [completedDays, setCompletedDays] = useState(new Set());
+  const [latestBP,      setLatestBP]      = useState(null);
+  const [latestBS,      setLatestBS]      = useState(null);
+  const [latestBody,    setLatestBody]    = useState(null);
+  const [waterMl,       setWaterMl]       = useState(0);
 
   useFocusEffect(useCallback(() => {
     loadRoutineState();
     loadProfile();
+    loadHealthData();
   }, []));
+
+  async function loadHealthData() {
+    try {
+      const [bp, bs, body, water] = await Promise.all([
+        getLatestBP(),
+        getLatestBS(),
+        getBodyMeasurements(),
+        getTodayWaterMl(),
+      ]);
+      setLatestBP(bp);
+      setLatestBS(bs);
+      setLatestBody(body[0] ?? null);
+      setWaterMl(water);
+    } catch (_) {}
+  }
 
   async function loadProfile() {
     try {
@@ -322,6 +367,56 @@ export default function HomeScreen() {
         delay={320}
       />
 
+      {/* ── HEALTH DIARY ── */}
+      <Animated.View entering={FadeInDown.delay(340).duration(400)}>
+        <Text style={s.sectionHeading}>Sağlık Günlüğü</Text>
+      </Animated.View>
+      <View style={s.diaryGrid}>
+        {(() => {
+          const bpClass = latestBP ? classifyBP(latestBP.sys, latestBP.dia) : null;
+          const bsClass = latestBS ? classifyBS(latestBS.value, latestBS.type) : null;
+          const bmi = latestBody?.kilo && latestBody?.boy
+            ? (latestBody.kilo / ((latestBody.boy / 100) ** 2)).toFixed(1)
+            : null;
+          return (
+            <>
+              <DiaryCard
+                icon="fitness-outline" title="Tansiyon"
+                value={latestBP ? `${latestBP.sys}/${latestBP.dia}` : null}
+                unit="mmHg"
+                sub={bpClass?.label}
+                color={bpClass?.color ?? C.blue}
+                delay={350}
+              />
+              <DiaryCard
+                icon="water-outline" title="Kan Şekeri"
+                value={latestBS?.value ?? null}
+                unit={latestBS?.unit ?? 'mg/dL'}
+                sub={bsClass?.label}
+                color={bsClass?.color ?? C.orchid}
+                delay={390}
+              />
+              <DiaryCard
+                icon="scale-outline" title="Kilo & BMI"
+                value={latestBody?.kilo ?? null}
+                unit="kg"
+                sub={bmi ? `BMI ${bmi}` : null}
+                color={C.cyan}
+                delay={430}
+              />
+              <DiaryCard
+                icon="water" title="Su"
+                value={waterMl > 0 ? waterMl : null}
+                unit="ml"
+                sub={`Hedef: 2300ml`}
+                color={C.blue}
+                delay={470}
+              />
+            </>
+          );
+        })()}
+      </View>
+
       {/* ── WEEKLY HEATMAP ── */}
       <Animated.View entering={FadeInDown.delay(360).duration(400)} style={s.weekCard}>
         <View style={s.weekCardHeader}>
@@ -443,6 +538,16 @@ const s = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot:  { width: 12, height: 12, borderRadius: 4 },
   legendTxt:  { color: C.muted, fontSize: 10 },
+
+  // ─ Health Diary ─
+  diaryGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
+  diaryCard:    { width: CARD_W, borderRadius: 18, overflow: 'hidden', borderWidth: 1 },
+  diaryGrad:    { padding: 14, gap: 4, minHeight: 110 },
+  diaryIconBg:  { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  diaryTitle:   { color: C.muted, fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
+  diaryValue:   { fontSize: 22, fontWeight: '900', lineHeight: 26 },
+  diaryUnit:    { fontSize: 12, fontWeight: '500', color: C.muted },
+  diarySub:     { color: C.muted, fontSize: 10, marginTop: 2 },
 
   // ─ Tip card ─
   tipCard:    { borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderWidth: 1, borderColor: C.orchid + '30', marginTop: 8 },
