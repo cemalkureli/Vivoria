@@ -114,4 +114,4 @@ npx expo start
 
 ---
 
-*Built with ❤️ — Vivoria · vital intelligence*
+*Vivoria · vital intelligence*
